@@ -1,99 +1,153 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Media Monitor
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend для сбора новостей и будущей медиааналитики на **TypeScript, Node.js, NestJS и PostgreSQL**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Проект развивается как практика backend-разработки: внешние интеграции, моделирование данных, обработка ошибок, фоновые процессы и SQL. Долгосрочная цель — исследовать активность новостных тем перед значимыми изменениями экономических и финансовых показателей.
 
-## Description
+**Текущий этап — сбор RSS.** Классификация, финансовые данные и аналитика пока не реализованы. Сервис не предоставляет торговые сигналы или прогнозы.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Что работает
 
-## Project setup
+- REST API для создания, просмотра, включения и отключения источников.
+- Импорт RSS при запуске приложения и каждые 10 минут по расписанию.
+- Сохранение заголовка, описания, ссылки, внешнего ID и даты публикации.
+- Пропуск повторных записей по `external_id` через PostgreSQL `ON CONFLICT DO NOTHING`.
+- Явный результат создания статьи: `created` или `duplicate`.
+- Статистика импорта: `total`, `imported`, `skipped`, `status`.
+- Сохранение частичных счётчиков при ошибке источника и продолжение обработки следующих источников.
+- Просмотр и удаление статей через API.
 
-```bash
-$ pnpm install
+## Как устроен импорт
+
+```text
+Scheduler → NewsImportService
+              ├── SourcesService: включённые источники
+              ├── RssService: загрузка и разбор XML
+              ├── ArticlesService → Repository → PostgreSQL
+              └── обновление даты успешного сбора и лог результата
 ```
 
-## Compile and run the project
+Источники и статьи обрабатываются последовательно. При ошибке вставки текущий импорт источника останавливается; ранее сохранённые статьи остаются в базе. При повторном сборе они пропускаются как дубликаты. Автоматических retry, очереди и отдельных workers пока нет.
+
+## Локальный запуск
+
+Требуются Node.js (версия в `.nvmrc`), pnpm (версия закреплена в `package.json`), Docker и Docker Compose.
+
+### 1. Получить проект и зависимости
 
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+git clone https://github.com/naive-algorithm/media-monitor.git
+cd media-monitor
+nvm use
+pnpm install --frozen-lockfile
 ```
 
-## Run tests
+Если не используешь nvm, установи соответствующую версию Node.js другим способом.
+
+### 2. Настроить окружение
+
+Создай `.env` в корне проекта. Значения ниже соответствуют локальной базе из `compose.yaml`:
+
+```dotenv
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=admin
+DB_PASSWORD=password
+DB_NAME=nest_pet
+PORT=3000
+```
+
+Это параметры для локальной разработки. `.env` исключён из Git. Имена базы и контейнера пока сохраняют первоначальное название проекта `nest-pet`.
+
+### 3. Поднять PostgreSQL и создать таблицы
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+docker compose up -d postgres
+docker compose exec postgres pg_isready -U admin -d nest_pet
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Дождись сообщения `accepting connections`, затем **один раз на новой базе** выполни:
 
 ```bash
-$ pnpm install -g mau
-$ mau deploy
+docker compose exec -T postgres psql -U admin -d nest_pet -v ON_ERROR_STOP=1 < src/database/schemas/schema.sql
+docker compose exec -T postgres psql -U admin -d nest_pet -v ON_ERROR_STOP=1 < src/database/schemas/seed.sql
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Seed добавляет BBC News и The Guardian. Схема и seed не идемпотентны: повторное выполнение на уже подготовленной базе приведёт к ошибкам существующих таблиц или источников. Миграции пока не настроены. Compose запускает только PostgreSQL; приложение работает на хосте.
 
-## Resources
+### 4. Запустить приложение
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+pnpm start:dev
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+API доступен на `http://localhost:3000`. При старте сразу начинается импорт включённых источников, поэтому для загрузки новостей нужен доступ в интернет. Результаты отображаются в логах. Затем импорт запускается на 00, 10, 20, 30, 40 и 50 минутах каждого часа.
 
-## Support
+```bash
+curl http://localhost:3000/sources
+curl http://localhost:3000/articles
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+Если статьи не появились, проверь логи импорта и доступность PostgreSQL и источников.
 
-## Stay in touch
+## REST API
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+| Метод | Путь | Назначение |
+|---|---|---|
+| `GET` | `/sources` | Все источники |
+| `GET` | `/sources/enabled` | Включённые источники |
+| `GET` | `/sources/:id` | Один источник |
+| `POST` | `/sources` | Создать включённый источник |
+| `POST` | `/sources/:id/enable` | Включить источник, ответ `204` |
+| `POST` | `/sources/:id/disable` | Отключить источник, ответ `204` |
+| `GET` | `/articles` | Все сохранённые статьи |
+| `GET` | `/articles/:id` | Одна статья |
+| `DELETE` | `/articles/:id` | Удалить статью, ответ `204` |
 
-## License
+Тело запроса `POST /sources`:
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```json
+{
+  "name": "Example News",
+  "url": "https://example.com/feed.xml",
+  "collectorType": "rss"
+}
+```
+
+URL в примере — заглушка: замени его действующим адресом RSS-ленты. Поддерживается только `collectorType: "rss"`. Новый источник попадёт в следующий запуск импорта; отдельного HTTP endpoint для ручного запуска пока нет.
+
+## Разработка и проверки
+
+```bash
+# Проверка типов без генерации файлов
+pnpm exec tsc --noEmit --incremental false
+
+# Сборка
+pnpm build
+
+# Запуск собранного приложения
+pnpm start:prod
+```
+
+Шаблонные тесты удалены; содержательные автоматические тесты ещё предстоит добавить. Jest и его конфигурация сохранены, но `pnpm test` и `pnpm test:e2e` сейчас сообщают `No tests found`. Скрипт lint также пока не готов: конфигурации ESLint в репозитории нет.
+
+## Текущие ограничения
+
+- RSS-парсер ожидает структуру `rss.channel.item` с массивом элементов; полноценной поддержки вариаций RSS и Atom пока нет.
+- Описания сохраняются как получены: могут содержать HTML и служебные ссылки. Это не гарантированно полный текст статьи.
+- Уникальность `external_id` пока глобальная, а не по паре `(source_id, external_id)`. Изменившиеся публикации с прежним ID пропускаются.
+- Нет пагинации, истории запусков, защиты от перекрывающихся импортов и отдельных ограничений времени/размера загрузки.
+- Нет аутентификации и защиты от SSRF при добавлении URL. Текущая версия предназначена для локальной разработки, а не для открытого доступа к API.
+
+## Следующие этапы
+
+1. Нормализация RSS: извлечение текста из HTML, очистка пробелов и служебных ссылок, проверка полей на fixtures.
+2. Миграции, история импортов и более точные контракты данных.
+3. Второй тип коллектора и общий контракт адаптеров.
+4. Очередь и workers: повторы, идемпотентность и наблюдаемость фоновой работы.
+5. Объяснимая классификация тем без обязательных внешних LLM API.
+6. Одна внешняя метрика и воспроизводимый анализ новостных всплесков.
+
+## Лицензия
+
+[MIT](LICENSE).
