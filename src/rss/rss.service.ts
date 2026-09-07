@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { XMLParser } from "fast-xml-parser";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
+import { compile } from "html-to-text";
 import { NewsItem } from "./news-item.interface";
 import { RssItemDto } from "./rss-item.dto";
 
@@ -25,6 +26,15 @@ class InvalidRssItemError extends Error {
 @Injectable()
 export class RssService {
   private readonly logger = new Logger(RssService.name);
+  private readonly htmlToTextConverter;
+
+  constructor() {
+    this.htmlToTextConverter = compile({
+      wordwrap: false,
+      selectors: [{ selector: "a", options: { ignoreHref: true } }],
+    });
+  }
+
   async collect(url: string): Promise<CollectionResult> {
     const collectionResult: CollectionResult = {
       items: [],
@@ -108,9 +118,11 @@ export class RssService {
       throw new InvalidRssItemError(`Invalid publication date: ${item.guid}`);
     }
 
+    const description = this.htmlToTextConverter(item.description ?? "").trim();
+
     return {
       title: item.title,
-      description: item.description ?? "",
+      description,
       url: item.link,
       publishedAt: date,
       externalId: item.guid,
