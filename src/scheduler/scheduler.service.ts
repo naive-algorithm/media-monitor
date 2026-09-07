@@ -19,7 +19,7 @@ export class SchedulerService implements OnModuleInit {
 
       for (const result of results) {
         this.logger.log(
-          `${result.source}: fetched: ${result.total}, imported: ${result.imported}, skipped: ${result.skipped}, status: ${result.status} `,
+          `${result.source}: fetched: ${result.total}, imported: ${result.imported}, skipped: ${result.skipped}, rejected: ${result.rejected}, status: ${result.status} `,
         );
       }
 

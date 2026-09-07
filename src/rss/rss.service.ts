@@ -5,11 +5,22 @@ import { validate } from "class-validator";
 import { NewsItem } from "./news-item.interface";
 import { RssItemDto } from "./rss-item.dto";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export type CollectionResult = {
   items: NewsItem[];
   total: number;
   rejected: number;
 };
+
+class InvalidRssItemError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidRssItemError";
+  }
+}
 
 @Injectable()
 export class RssService {
@@ -30,18 +41,25 @@ export class RssService {
     const parsedFeed: unknown = parser.parse(await res.text());
     const rawItems = this.extractRssItems(parsedFeed);
 
-    const normalizationResults = await Promise.allSettled(
-      rawItems.map((rawItem) => this.normalizeRssItem(rawItem)),
-    );
+    const normalizationResults: PromiseSettledResult<NewsItem>[] =
+      await Promise.allSettled(
+        rawItems.map((rawItem) => this.normalizeRssItem(rawItem)),
+      );
 
     for (const normalizationResult of normalizationResults) {
       if (normalizationResult.status === "fulfilled") {
         collectionResult.items.push(normalizationResult.value);
-      } else {
-        this.logger.error(
+      } else if (normalizationResult.reason instanceof InvalidRssItemError) {
+        this.logger.warn(
           `Error processing RSS item: ${normalizationResult.reason}`,
         );
         collectionResult.rejected++;
+      } else if (normalizationResult.reason instanceof Error) {
+        throw normalizationResult.reason;
+      } else {
+        throw new Error(
+          `Unknown error during RSS item normalization: ${normalizationResult.reason}`,
+        );
       }
     }
 
@@ -52,31 +70,17 @@ export class RssService {
   }
 
   private extractRssItems(parsedFeed: unknown): unknown[] {
-    if (
-      typeof parsedFeed !== "object" ||
-      parsedFeed === null ||
-      Array.isArray(parsedFeed) ||
-      !("rss" in parsedFeed)
-    ) {
+    if (!isRecord(parsedFeed) || !("rss" in parsedFeed)) {
       throw new Error("Invalid RSS feed: Expected an rss root");
     }
 
     const rss = parsedFeed.rss;
-    if (
-      typeof rss !== "object" ||
-      rss === null ||
-      Array.isArray(rss) ||
-      !("channel" in rss)
-    ) {
+    if (!isRecord(rss) || !("channel" in rss)) {
       throw new Error("Invalid RSS feed: Expected a channel");
     }
 
     const channel = rss.channel;
-    if (
-      typeof channel !== "object" ||
-      channel === null ||
-      Array.isArray(channel)
-    ) {
+    if (!isRecord(channel)) {
       throw new Error("Invalid RSS feed: Expected a channel object");
     }
 
@@ -88,15 +92,20 @@ export class RssService {
   }
 
   async normalizeRssItem(rssItem: unknown): Promise<NewsItem> {
+    if (!isRecord(rssItem)) {
+      throw new InvalidRssItemError(`Invalid RSS item: Expected an object`);
+    }
     const item = plainToInstance(RssItemDto, rssItem);
     const errors = await validate(item);
     if (errors.length > 0) {
-      throw new Error(`Invalid RSS item: ${JSON.stringify(errors)}`);
+      throw new InvalidRssItemError(
+        `Invalid RSS item: ${JSON.stringify(errors)}`,
+      );
     }
 
     const date = new Date(item.pubDate);
     if (Number.isNaN(date.getTime())) {
-      throw new Error(`Invalid publication date: ${item.guid}`);
+      throw new InvalidRssItemError(`Invalid publication date: ${item.guid}`);
     }
 
     return {
