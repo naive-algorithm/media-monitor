@@ -5,16 +5,19 @@ import { Article } from "src/articles/entities/article.entity";
 import { Source } from "src/sources/source.entity";
 import { SourcesService } from "src/sources/sources.service";
 import { CreateArticleStatus } from "src/articles/types/create-article.type";
+import { CollectionResult } from "src/rss/rss.service";
 
 enum ImportStatus {
   SUCCESS = "success",
   FAILED = "failed",
+  PARTIAL = "partial",
 }
 
 type ImportStats = {
   total: number | null;
   imported: number;
   skipped: number;
+  rejected: number;
   status: ImportStatus;
 };
 
@@ -30,23 +33,30 @@ export class NewsImportService {
     private readonly sourcesService: SourcesService,
   ) {}
 
-  async importNews(source: Source): Promise<ImportStats> {
+  async importSource(source: Source): Promise<ImportStats> {
     const stats: ImportStats = {
       total: null,
       imported: 0,
       skipped: 0,
+      rejected: 0,
       status: ImportStatus.FAILED,
     };
+
     try {
       if (!source) {
         throw new Error("Source not found");
       }
 
-      const news = await this.rssService.collect(source.url);
+      const collectionResult: CollectionResult = await this.rssService.collect(
+        source.url,
+      );
 
-      stats.total = news.length;
+      stats.total = collectionResult.total;
+      stats.rejected = collectionResult.rejected;
 
-      for (const item of news) {
+      const collectedItems = collectionResult.items;
+
+      for (const item of collectedItems) {
         const article = new Article(
           undefined,
           source.id,
@@ -57,17 +67,26 @@ export class NewsImportService {
           item.publishedAt,
         );
 
-        const result = await this.articlesService.create(article);
-        if (result.status === CreateArticleStatus.CREATED) {
+        const creationResult = await this.articlesService.create(article);
+        if (creationResult.status === CreateArticleStatus.CREATED) {
           stats.imported++;
         } else {
           stats.skipped++;
         }
       }
 
-      await this.sourcesService.updateLastCollectedAt(source.id);
+      if (stats.rejected === 0) {
+        stats.status = ImportStatus.SUCCESS;
+      } else if (stats.rejected === stats.total) {
+        stats.status = ImportStatus.FAILED;
+      } else {
+        stats.status = ImportStatus.PARTIAL;
+      }
 
-      stats.status = ImportStatus.SUCCESS;
+      if (stats.status !== ImportStatus.FAILED) {
+        await this.sourcesService.updateLastCollectedAt(source.id);
+      }
+
       return stats;
     } catch (error) {
       this.logger.error(
@@ -79,13 +98,13 @@ export class NewsImportService {
     }
   }
 
-  async importAll(): Promise<ImportResult[]> {
+  async importEnabledSources(): Promise<ImportResult[]> {
     const sources = await this.sourcesService.findEnabled();
 
     const results: ImportResult[] = [];
 
     for (const source of sources) {
-      const stats = await this.importNews(source);
+      const stats = await this.importSource(source);
       results.push({ source: source.name, ...stats });
     }
 

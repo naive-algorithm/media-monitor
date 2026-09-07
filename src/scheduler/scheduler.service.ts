@@ -15,7 +15,7 @@ export class SchedulerService implements OnModuleInit {
   private async importNews() {
     this.logger.log("Start importing news...");
     try {
-      const results = await this.newsImportService.importAll();
+      const results = await this.newsImportService.importEnabledSources();
 
       for (const result of results) {
         this.logger.log(
