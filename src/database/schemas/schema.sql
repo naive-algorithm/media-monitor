@@ -13,6 +13,7 @@ CREATE TABLE articles (
     title TEXT NOT NULL,
     description TEXT,
     url TEXT NOT NULL,
-    external_id TEXT NOT NULL UNIQUE,
-    published_at TIMESTAMP NOT NULL
+    external_id TEXT NOT NULL,
+    published_at TIMESTAMP NOT NULL,
+    CONSTRAINT unique_external_id_per_source UNIQUE (external_id, source_id)
 );

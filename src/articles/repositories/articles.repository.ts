@@ -51,7 +51,7 @@ export class ArticlesRepository {
     published_at
 )
 VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (external_id)
+ON CONFLICT (external_id, source_id)
 DO NOTHING
 RETURNING *;
       `,
