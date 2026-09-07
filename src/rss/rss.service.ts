@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { XMLParser } from "fast-xml-parser";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import { compile } from "html-to-text";
+import { compile, compiledFunction } from "html-to-text";
 import { NewsItem } from "./news-item.interface";
 import { RssItemDto } from "./rss-item.dto";
 
@@ -26,7 +26,7 @@ class InvalidRssItemError extends Error {
 @Injectable()
 export class RssService {
   private readonly logger = new Logger(RssService.name);
-  private readonly htmlToTextConverter;
+  private readonly htmlToTextConverter: compiledFunction;
 
   constructor() {
     this.htmlToTextConverter = compile({
