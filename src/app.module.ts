@@ -6,6 +6,7 @@ import { RssModule } from './rss/rss.module';
 import { SourcesModule } from './sources/sources.module';
 import { NewsImportModule } from './news-import/news-import.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
+import { CollectorsModule } from './collectors/collectors.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     SourcesModule,
     NewsImportModule,
     SchedulerModule,
+    CollectorsModule,
   ],
   controllers: [],
   providers: [],

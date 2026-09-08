@@ -1,5 +1,5 @@
 import { IsEnum, IsNotEmpty, IsString, Length, IsUrl } from "class-validator";
-import { CollectorType } from "../collector-type.enum";
+import { CollectorType } from "../../collectors/collector-type.enum";
 
 export class CreateSourceDto {
     @IsString()

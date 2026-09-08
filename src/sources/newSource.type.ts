@@ -1,4 +1,4 @@
-import { CollectorType } from "./collector-type.enum";
+import { CollectorType } from "../collectors/collector-type.enum";
 
 export type NewSource = {
   name: string;

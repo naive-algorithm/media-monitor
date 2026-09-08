@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { RssService } from './rss.service';
+import { RssCollector } from './rss.collector';
 
 @Module({
-  providers: [RssService],
-  exports: [RssService],
+  providers: [RssCollector],
+  exports: [RssCollector],
 })
 export class RssModule {}

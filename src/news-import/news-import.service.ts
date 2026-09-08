@@ -1,16 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { RssService } from "src/rss/rss.service";
 import { ArticlesService } from "src/articles/articles.service";
 import { Article } from "src/articles/entities/article.entity";
 import { Source } from "src/sources/source.entity";
 import { SourcesService } from "src/sources/sources.service";
 import { CreateArticleStatus } from "src/articles/types/create-article.type";
-import { CollectionResult } from "src/rss/rss.service";
+import { CollectionResult } from "src/collectors/collection-result.type";
+import { CollectorsRegistry } from "src/collectors/collectors.registry";
 
 enum ImportStatus {
-  SUCCESS = "success",
-  FAILED = "failed",
-  PARTIAL = "partial",
+  SUCCESS = "SUCCESS",
+  FAILED = "FAILED",
+  PARTIAL = "PARTIAL",
 }
 
 type ImportStats = {
@@ -28,7 +28,7 @@ export class NewsImportService {
   private readonly logger: Logger = new Logger(NewsImportService.name);
 
   constructor(
-    private readonly rssService: RssService,
+    private readonly collectorsRegistry: CollectorsRegistry,
     private readonly articlesService: ArticlesService,
     private readonly sourcesService: SourcesService,
   ) {}
@@ -47,9 +47,9 @@ export class NewsImportService {
         throw new Error("Source not found");
       }
 
-      const collectionResult: CollectionResult = await this.rssService.collect(
-        source.url,
-      );
+      const collectionResult: CollectionResult = await this.collectorsRegistry
+        .getCollector(source.collectorType)
+        .collect(source.url);
 
       stats.total = collectionResult.total;
       stats.rejected = collectionResult.rejected;

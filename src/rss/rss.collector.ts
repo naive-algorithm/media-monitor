@@ -2,19 +2,15 @@ import { Injectable, Logger } from "@nestjs/common";
 import { XMLParser } from "fast-xml-parser";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import { compile, compiledFunction } from "html-to-text";
-import { NewsItem } from "./news-item.interface";
+import { compile, type compiledFunction } from "html-to-text";
+import { Collector } from "../collectors/collector.interface";
+import { CollectionResult } from "../collectors/collection-result.type";
+import { CollectedItem } from "../collectors/collected-item.interface";
 import { RssItemDto } from "./rss-item.dto";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-
-export type CollectionResult = {
-  items: NewsItem[];
-  total: number;
-  rejected: number;
-};
 
 class InvalidRssItemError extends Error {
   constructor(message: string) {
@@ -24,8 +20,8 @@ class InvalidRssItemError extends Error {
 }
 
 @Injectable()
-export class RssService {
-  private readonly logger = new Logger(RssService.name);
+export class RssCollector implements Collector {
+  private readonly logger = new Logger(RssCollector.name);
   private readonly htmlToTextConverter: compiledFunction;
 
   constructor() {
@@ -51,7 +47,7 @@ export class RssService {
     const parsedFeed: unknown = parser.parse(await res.text());
     const rawItems = this.extractRssItems(parsedFeed);
 
-    const normalizationResults: PromiseSettledResult<NewsItem>[] =
+    const normalizationResults: PromiseSettledResult<CollectedItem>[] =
       await Promise.allSettled(
         rawItems.map((rawItem) => this.normalizeRssItem(rawItem)),
       );
@@ -101,7 +97,7 @@ export class RssService {
     return Array.isArray(channel.item) ? channel.item : [channel.item];
   }
 
-  async normalizeRssItem(rssItem: unknown): Promise<NewsItem> {
+  async normalizeRssItem(rssItem: unknown): Promise<CollectedItem> {
     if (!isRecord(rssItem)) {
       throw new InvalidRssItemError(`Invalid RSS item: Expected an object`);
     }
