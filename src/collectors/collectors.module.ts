@@ -1,10 +1,11 @@
-import { Module } from '@nestjs/common';
-import { CollectorsRegistry } from './collectors.registry';
-import { RssModule } from 'src/rss/rss.module';
+import { DiscoveryModule } from "@nestjs/core";
+import { Module } from "@nestjs/common";
+import { CollectorsRegistry } from "./collectors.registry";
+import { RssModule } from "src/rss/rss.module";
 
 @Module({
-    providers: [CollectorsRegistry],
-    exports: [CollectorsRegistry],
-    imports: [RssModule]
+  imports: [RssModule, DiscoveryModule],
+  providers: [CollectorsRegistry],
+  exports: [CollectorsRegistry],
 })
 export class CollectorsModule {}

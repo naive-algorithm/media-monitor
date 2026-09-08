@@ -1,14 +1,14 @@
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { NewsImportService } from "src/news-import/news-import.service";
 
 @Injectable()
-export class SchedulerService implements OnModuleInit {
+export class SchedulerService implements OnApplicationBootstrap {
   private readonly logger = new Logger(SchedulerService.name);
 
   constructor(private readonly newsImportService: NewsImportService) {}
 
-  async onModuleInit() {
+  async onApplicationBootstrap() {
     await this.importNews();
   }
 

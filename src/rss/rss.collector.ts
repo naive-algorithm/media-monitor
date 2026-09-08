@@ -3,7 +3,9 @@ import { XMLParser } from "fast-xml-parser";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
 import { compile, type compiledFunction } from "html-to-text";
-import { Collector } from "../collectors/collector.interface";
+import { Collector } from "../collectors/collector.abstract";
+import { Collects } from "../collectors/collects.decorator";
+import { CollectorType } from "../collectors/collector-type.enum";
 import { CollectionResult } from "../collectors/collection-result.type";
 import { CollectedItem } from "../collectors/collected-item.interface";
 import { RssItemDto } from "./rss-item.dto";
@@ -20,11 +22,13 @@ class InvalidRssItemError extends Error {
 }
 
 @Injectable()
-export class RssCollector implements Collector {
+@Collects(CollectorType.RSS)
+export class RssCollector extends Collector {
   private readonly logger = new Logger(RssCollector.name);
   private readonly htmlToTextConverter: compiledFunction;
 
   constructor() {
+    super();
     this.htmlToTextConverter = compile({
       wordwrap: false,
       selectors: [{ selector: "a", options: { ignoreHref: true } }],
