@@ -1,4 +1,4 @@
-import { CollectedItem } from './collected-item.interface';
+import { CollectedItem } from "./collected-item.interface";
 
 export type CollectionResult = {
   items: CollectedItem[];

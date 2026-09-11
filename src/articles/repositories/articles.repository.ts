@@ -1,7 +1,7 @@
 import { Injectable, Inject } from "@nestjs/common";
 import { Article } from "../entities/article.entity";
 import { Pool } from "pg";
-import { DATABASE_POOL } from "src/database/databse.constant";
+import { DATABASE_POOL } from "src/database/database.constant";
 import {
   CreateArticleResult,
   CreateArticleStatus,

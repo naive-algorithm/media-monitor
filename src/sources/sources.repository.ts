@@ -1,8 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { Pool } from 'pg';
-import { DATABASE_POOL } from 'src/database/databse.constant';
+import { DATABASE_POOL } from 'src/database/database.constant';
 import { Source } from './source.entity';
-import { NewSource } from './newSource.type';
+import { NewSource } from './new-source.type';
 
 @Injectable()
 export class SourcesRepository {

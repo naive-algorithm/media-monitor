@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { DATABASE_POOL } from "./databse.constant";
+import { DATABASE_POOL } from "./database.constant";
 
 export const databaseProvider = [
   {

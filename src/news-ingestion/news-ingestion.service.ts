@@ -7,25 +7,23 @@ import { CreateArticleStatus } from "src/articles/types/create-article.type";
 import { CollectionResult } from "src/collectors/collection-result.type";
 import { CollectorsRegistry } from "src/collectors/collectors.registry";
 
-enum ImportStatus {
+export enum IngestionStatus {
   SUCCESS = "SUCCESS",
   FAILED = "FAILED",
   PARTIAL = "PARTIAL",
 }
 
-type ImportStats = {
+type IngestionStats = {
   total: number | null;
   imported: number;
   skipped: number;
   rejected: number;
-  status: ImportStatus;
+  status: IngestionStatus;
 };
 
-type ImportResult = { source: string } & ImportStats;
-
 @Injectable()
-export class NewsImportService {
-  private readonly logger: Logger = new Logger(NewsImportService.name);
+export class NewsIngestionService {
+  private readonly logger: Logger = new Logger(NewsIngestionService.name);
 
   constructor(
     private readonly collectorsRegistry: CollectorsRegistry,
@@ -33,13 +31,13 @@ export class NewsImportService {
     private readonly sourcesService: SourcesService,
   ) {}
 
-  async importSource(source: Source): Promise<ImportStats> {
-    const stats: ImportStats = {
+  async ingestFromSource(source: Source): Promise<IngestionStats> {
+    const stats: IngestionStats = {
       total: null,
       imported: 0,
       skipped: 0,
       rejected: 0,
-      status: ImportStatus.FAILED,
+      status: IngestionStatus.FAILED,
     };
 
     try {
@@ -68,22 +66,26 @@ export class NewsImportService {
         );
 
         const creationResult = await this.articlesService.create(article);
-        if (creationResult.status === CreateArticleStatus.CREATED) {
-          stats.imported++;
-        } else {
-          stats.skipped++;
+
+        switch (creationResult.status) {
+          case CreateArticleStatus.CREATED:
+            stats.imported++;
+            break;
+          case CreateArticleStatus.DUPLICATE:
+            stats.skipped++;
+            break;
         }
       }
 
       if (stats.rejected === 0) {
-        stats.status = ImportStatus.SUCCESS;
+        stats.status = IngestionStatus.SUCCESS;
       } else if (stats.rejected === stats.total) {
-        stats.status = ImportStatus.FAILED;
+        stats.status = IngestionStatus.FAILED;
       } else {
-        stats.status = ImportStatus.PARTIAL;
+        stats.status = IngestionStatus.PARTIAL;
       }
 
-      if (stats.status !== ImportStatus.FAILED) {
+      if (stats.status !== IngestionStatus.FAILED) {
         await this.sourcesService.updateLastCollectedAt(source.id);
       }
 
@@ -93,21 +95,8 @@ export class NewsImportService {
         `Error importing news from source ${source?.name ?? "unknown"}:`,
         error,
       );
-      stats.status = ImportStatus.FAILED;
+      stats.status = IngestionStatus.FAILED;
       return stats;
     }
-  }
-
-  async importEnabledSources(): Promise<ImportResult[]> {
-    const sources = await this.sourcesService.findEnabled();
-
-    const results: ImportResult[] = [];
-
-    for (const source of sources) {
-      const stats = await this.importSource(source);
-      results.push({ source: source.name, ...stats });
-    }
-
-    return results;
   }
 }

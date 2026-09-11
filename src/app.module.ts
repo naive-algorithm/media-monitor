@@ -1,12 +1,13 @@
-import { Module } from '@nestjs/common';
-import { ArticlesModule } from './articles/articles.module';
-import { ScheduleModule } from '@nestjs/schedule';
-import { ConfigModule } from '@nestjs/config';
-import { RssModule } from './rss/rss.module';
-import { SourcesModule } from './sources/sources.module';
-import { NewsImportModule } from './news-import/news-import.module';
-import { SchedulerModule } from './scheduler/scheduler.module';
-import { CollectorsModule } from './collectors/collectors.module';
+import { Module } from "@nestjs/common";
+import { ScheduleModule } from "@nestjs/schedule";
+import { ConfigModule } from "@nestjs/config";
+import { ArticlesModule } from "./articles/articles.module";
+import { RssModule } from "./rss/rss.module";
+import { SourcesModule } from "./sources/sources.module";
+import { NewsIngestionModule } from "./news-ingestion/news-ingestion.module";
+import { NewsIngestionSchedulerModule } from "./scheduler/news-ingestion-scheduler.module";
+import { CollectorsModule } from "./collectors/collectors.module";
+import { QueueInfrastructureModule } from './queue-infrastructure/queue-infrastructure.module';
 
 @Module({
   imports: [
@@ -14,11 +15,12 @@ import { CollectorsModule } from './collectors/collectors.module';
       isGlobal: true,
     }),
     ScheduleModule.forRoot(),
+    QueueInfrastructureModule,
     ArticlesModule,
     RssModule,
     SourcesModule,
-    NewsImportModule,
-    SchedulerModule,
+    NewsIngestionModule,
+    NewsIngestionSchedulerModule,
     CollectorsModule,
   ],
   controllers: [],
