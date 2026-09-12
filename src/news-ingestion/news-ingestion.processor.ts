@@ -3,7 +3,7 @@ import {
   INGEST_SOURCE_JOB_NAME,
 } from "./news-ingestion.constants";
 import { formatLogMessage } from "../common/logging/format-log-message";
-import { Logger, NotFoundException } from "@nestjs/common";
+import { BeforeApplicationShutdown, Logger, NotFoundException } from "@nestjs/common";
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Job, UnrecoverableError } from "bullmq";
 import {
@@ -22,7 +22,7 @@ import { Source } from "src/sources/source.entity";
 @Processor(NEWS_INGESTION_QUEUE_NAME, {
   concurrency: 4,
 })
-export class NewsIngestionProcessor extends WorkerHost {
+export class NewsIngestionProcessor extends WorkerHost implements BeforeApplicationShutdown {
   private readonly logger = new Logger(NewsIngestionProcessor.name);
   constructor(
     private readonly newsIngestionService: NewsIngestionService,
@@ -142,5 +142,9 @@ export class NewsIngestionProcessor extends WorkerHost {
         return;
       }
     }
+  }
+
+  async beforeApplicationShutdown() {
+    await this.worker.close();
   }
 }
