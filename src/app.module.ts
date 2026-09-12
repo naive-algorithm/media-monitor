@@ -8,6 +8,7 @@ import { NewsIngestionModule } from "./news-ingestion/news-ingestion.module";
 import { NewsIngestionSchedulerModule } from "./scheduler/news-ingestion-scheduler.module";
 import { CollectorsModule } from "./collectors/collectors.module";
 import { QueueInfrastructureModule } from './queue-infrastructure/queue-infrastructure.module';
+import { IngestionRunsModule } from './ingestion-runs/ingestion-runs.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { QueueInfrastructureModule } from './queue-infrastructure/queue-infrastr
     NewsIngestionModule,
     NewsIngestionSchedulerModule,
     CollectorsModule,
+    IngestionRunsModule,
   ],
   controllers: [],
   providers: [],

@@ -3,7 +3,11 @@ import {
   INGEST_SOURCE_JOB_NAME,
 } from "./news-ingestion.constants";
 import { formatLogMessage } from "../common/logging/format-log-message";
-import { BeforeApplicationShutdown, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BeforeApplicationShutdown,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Job, UnrecoverableError } from "bullmq";
 import {
@@ -18,15 +22,20 @@ import {
 } from "./ingestion-result.type";
 import { SourcesService } from "src/sources/sources.service";
 import { Source } from "src/sources/source.entity";
+import { IngestionRunsService } from "src/ingestion-runs/ingestion-runs.service";
 
 @Processor(NEWS_INGESTION_QUEUE_NAME, {
   concurrency: 4,
 })
-export class NewsIngestionProcessor extends WorkerHost implements BeforeApplicationShutdown {
+export class NewsIngestionProcessor
+  extends WorkerHost
+  implements BeforeApplicationShutdown
+{
   private readonly logger = new Logger(NewsIngestionProcessor.name);
   constructor(
     private readonly newsIngestionService: NewsIngestionService,
     private readonly sourcesService: SourcesService,
+    private readonly ingestionRunsService: IngestionRunsService,
   ) {
     super();
   }
@@ -45,24 +54,30 @@ export class NewsIngestionProcessor extends WorkerHost implements BeforeApplicat
     );
 
     const sourceId = job.data.sourceId;
-    const source: Source = await this.sourcesService
-      .findById(sourceId)
-      .catch((error: unknown) => {
-        this.logger.error(formatLogMessage("Source lookup failed", {
-          jobId: job.id, sourceId, attempt: job.attemptsStarted,
-          durationMs: Math.round(performance.now() - startedAt), cause: error,
-        }));
-        if (error instanceof NotFoundException) {
-          throw new UnrecoverableError(`Source ${sourceId} not found`);
-        }
-        throw error;
-      });
+    const source = await this.loadSource(job);
+
+    const runId = await this.ingestionRunsService.recordRunStart({
+      sourceId: source.id,
+      jobId: job.id!,
+      attempt: job.attemptsStarted,
+    });
 
     if (!source.isEnabled) {
-      this.logger.log(formatLogMessage(`${source.name} — ingestion skipped`, {
-        jobId: job.id, sourceId, reason: "source-disabled",
-        durationMs: Math.round(performance.now() - startedAt),
-      }));
+      await this.ingestionRunsService.recordRunFinish(runId, {
+        total: null,
+        imported: 0,
+        rejected: 0,
+        skipped: 0,
+        status: "SKIPPED",
+      });
+      this.logger.log(
+        formatLogMessage(`${source.name} — ingestion skipped`, {
+          jobId: job.id,
+          sourceId,
+          reason: "source-disabled",
+          durationMs: Math.round(performance.now() - startedAt),
+        }),
+      );
       return {
         status: "SKIPPED",
         reason: "source-disabled",
@@ -73,8 +88,14 @@ export class NewsIngestionProcessor extends WorkerHost implements BeforeApplicat
     const ingestionResult =
       await this.newsIngestionService.ingestFromSource(source);
 
-    this.logIngestionResult(job, source, ingestionResult,
-      Math.round(performance.now() - startedAt));
+    await this.ingestionRunsService.recordRunFinish(runId, ingestionResult);
+
+    this.logIngestionResult(
+      job,
+      source,
+      ingestionResult,
+      Math.round(performance.now() - startedAt),
+    );
 
     if (ingestionResult.status === IngestionStatus.FAILED) {
       throw this.createIngestionError(ingestionResult.failure);
@@ -84,6 +105,29 @@ export class NewsIngestionProcessor extends WorkerHost implements BeforeApplicat
       status: "PROCESSED",
       ingestion: ingestionResult,
     };
+  }
+
+  private async loadSource(job: Job<IngestSourceJobData>): Promise<Source> {
+    const startedAt = performance.now();
+    const sourceId = job.data.sourceId;
+
+    try {
+      return await this.sourcesService.findById(sourceId);
+    } catch (error: unknown) {
+      this.logger.error(
+        formatLogMessage("Source lookup failed", {
+          jobId: job.id,
+          sourceId,
+          attempt: job.attemptsStarted,
+          durationMs: Math.round(performance.now() - startedAt),
+          cause: error,
+        }),
+      );
+      if (error instanceof NotFoundException) {
+        throw new UnrecoverableError(`Source ${sourceId} not found`);
+      }
+      throw error;
+    }
   }
 
   private createIngestionError(failure: IngestionFailure): Error {
@@ -122,10 +166,17 @@ export class NewsIngestionProcessor extends WorkerHost implements BeforeApplicat
 
     switch (result.status) {
       case IngestionStatus.SUCCESS:
-        this.logger.log(formatLogMessage(`${source.name} — ingestion succeeded`, context));
+        this.logger.log(
+          formatLogMessage(`${source.name} — ingestion succeeded`, context),
+        );
         return;
       case IngestionStatus.PARTIAL:
-        this.logger.warn(formatLogMessage(`${source.name} — ingestion partially completed`, context));
+        this.logger.warn(
+          formatLogMessage(
+            `${source.name} — ingestion partially completed`,
+            context,
+          ),
+        );
         return;
       case IngestionStatus.FAILED: {
         const errorContext = {
@@ -138,7 +189,12 @@ export class NewsIngestionProcessor extends WorkerHost implements BeforeApplicat
               : undefined,
         };
 
-        this.logger.error(formatLogMessage(`${source.name} — ingestion attempt failed`, errorContext));
+        this.logger.error(
+          formatLogMessage(
+            `${source.name} — ingestion attempt failed`,
+            errorContext,
+          ),
+        );
         return;
       }
     }
