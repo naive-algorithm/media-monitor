@@ -1,12 +1,27 @@
-import { NEWS_INGESTION_QUEUE_NAME, INGEST_SOURCE_JOB_NAME } from "./news-ingestion.constants";
-import { Logger } from "@nestjs/common";
+import {
+  NEWS_INGESTION_QUEUE_NAME,
+  INGEST_SOURCE_JOB_NAME,
+} from "./news-ingestion.constants";
+import { formatLogMessage } from "../common/logging/format-log-message";
+import { Logger, NotFoundException } from "@nestjs/common";
 import { Processor, WorkerHost } from "@nestjs/bullmq";
-import { Job } from "bullmq";
-import { IngestSourceJobData } from "./ingest-source-job.type";
-import { IngestionStatus, NewsIngestionService } from "./news-ingestion.service";
+import { Job, UnrecoverableError } from "bullmq";
+import {
+  IngestSourceJobData,
+  IngestSourceJobResult,
+} from "./ingest-source-job.type";
+import { NewsIngestionService } from "./news-ingestion.service";
+import {
+  IngestionFailure,
+  IngestionResult,
+  IngestionStatus,
+} from "./ingestion-result.type";
 import { SourcesService } from "src/sources/sources.service";
+import { Source } from "src/sources/source.entity";
 
-@Processor(NEWS_INGESTION_QUEUE_NAME)
+@Processor(NEWS_INGESTION_QUEUE_NAME, {
+  concurrency: 4,
+})
 export class NewsIngestionProcessor extends WorkerHost {
   private readonly logger = new Logger(NewsIngestionProcessor.name);
   constructor(
@@ -15,42 +30,117 @@ export class NewsIngestionProcessor extends WorkerHost {
   ) {
     super();
   }
-  async process(job: Job<IngestSourceJobData>) {
+
+  async process(job: Job<IngestSourceJobData>): Promise<IngestSourceJobResult> {
+    const startedAt = performance.now();
     if (job.name !== INGEST_SOURCE_JOB_NAME) {
-      throw new Error(`Unknown job type: ${job.name}`);
+      throw new UnrecoverableError(`Unknown job type: ${job.name}`);
     }
-    this.logger.log(`Running job ${job.name}:${job.id}...`);
+    this.logger.debug(
+      formatLogMessage("Ingestion started", {
+        jobId: job.id,
+        sourceId: job.data.sourceId,
+        attempt: job.attemptsStarted,
+      }),
+    );
 
     const sourceId = job.data.sourceId;
-    const source = await this.sourcesService.findById(sourceId);
+    const source: Source = await this.sourcesService
+      .findById(sourceId)
+      .catch((error: unknown) => {
+        this.logger.error(formatLogMessage("Source lookup failed", {
+          jobId: job.id, sourceId, attempt: job.attemptsStarted,
+          durationMs: Math.round(performance.now() - startedAt), cause: error,
+        }));
+        if (error instanceof NotFoundException) {
+          throw new UnrecoverableError(`Source ${sourceId} not found`);
+        }
+        throw error;
+      });
 
     if (!source.isEnabled) {
-      this.logger.warn(`Cannot import: Source ${source.name} is not enabled`);
-      return;
+      this.logger.log(formatLogMessage(`${source.name} — ingestion skipped`, {
+        jobId: job.id, sourceId, reason: "source-disabled",
+        durationMs: Math.round(performance.now() - startedAt),
+      }));
+      return {
+        status: "SKIPPED",
+        reason: "source-disabled",
+        sourceId: source.id,
+      };
     }
 
-    const ingestionResult = await this.newsIngestionService.ingestFromSource(source);
+    const ingestionResult =
+      await this.newsIngestionService.ingestFromSource(source);
 
-    switch (ingestionResult.status) {
+    this.logIngestionResult(job, source, ingestionResult,
+      Math.round(performance.now() - startedAt));
+
+    if (ingestionResult.status === IngestionStatus.FAILED) {
+      throw this.createIngestionError(ingestionResult.failure);
+    }
+
+    return {
+      status: "PROCESSED",
+      ingestion: ingestionResult,
+    };
+  }
+
+  private createIngestionError(failure: IngestionFailure): Error {
+    switch (failure.reason) {
+      case "all-items-rejected":
+        return new UnrecoverableError(`All items rejected`);
+
+      case "exception": {
+        if (failure.cause instanceof Error) {
+          return failure.cause;
+        }
+        return new Error("News ingestion failed: a non-Error value was thrown");
+      }
+      default: {
+        const unexpected: never = failure;
+        throw new Error(`Unexpected ingestion failure: ${String(unexpected)}`);
+      }
+    }
+  }
+
+  private logIngestionResult(
+    job: Job<IngestSourceJobData>,
+    source: Source,
+    result: IngestionResult,
+    durationMs: number,
+  ) {
+    const context = {
+      jobId: job.id,
+      sourceId: source.id,
+      attempt: job.attemptsStarted,
+      durationMs,
+      imported: result.imported,
+      rejected: result.rejected,
+      skipped: result.skipped,
+    };
+
+    switch (result.status) {
       case IngestionStatus.SUCCESS:
-        this.logger.log(`Job ${job.name}:${job.id} has been successfully done`);
-        this.logger.log(
-          `Source: ${source.name} Imported: ${ingestionResult.imported}, rejected: ${ingestionResult.rejected}, skipped: ${ingestionResult.skipped}, status: ${ingestionResult.status}`,
-        );
+        this.logger.log(formatLogMessage(`${source.name} — ingestion succeeded`, context));
         return;
       case IngestionStatus.PARTIAL:
-        this.logger.log(
-          `Job ${job.name}:${job.id} has been done. Some of the news (${ingestionResult.rejected}) weren't imported`,
-        );
-        this.logger.log(
-          `Source: ${source.name} Imported: ${ingestionResult.imported}, rejected: ${ingestionResult.rejected}, skipped: ${ingestionResult.skipped}, status: ${ingestionResult.status}`,
-        );
+        this.logger.warn(formatLogMessage(`${source.name} — ingestion partially completed`, context));
         return;
-      default:
-        this.logger.error(
-          `Source: ${source.name} Imported: ${ingestionResult.imported}, rejected: ${ingestionResult.rejected}, skipped: ${ingestionResult.skipped}, status: ${ingestionResult.status}`,
-        );
-        throw new Error("News ingestion failed");
+      case IngestionStatus.FAILED: {
+        const errorContext = {
+          ...context,
+          stage: result.failure.stage,
+          reason: result.failure.reason,
+          cause:
+            result.failure.reason === "exception"
+              ? result.failure.cause
+              : undefined,
+        };
+
+        this.logger.error(formatLogMessage(`${source.name} — ingestion attempt failed`, errorContext));
+        return;
+      }
     }
   }
 }

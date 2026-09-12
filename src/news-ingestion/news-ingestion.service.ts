@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { ArticlesService } from "src/articles/articles.service";
 import { Article } from "src/articles/entities/article.entity";
 import { Source } from "src/sources/source.entity";
@@ -6,39 +6,30 @@ import { SourcesService } from "src/sources/sources.service";
 import { CreateArticleStatus } from "src/articles/types/create-article.type";
 import { CollectionResult } from "src/collectors/collection-result.type";
 import { CollectorsRegistry } from "src/collectors/collectors.registry";
-
-export enum IngestionStatus {
-  SUCCESS = "SUCCESS",
-  FAILED = "FAILED",
-  PARTIAL = "PARTIAL",
-}
-
-type IngestionStats = {
-  total: number | null;
-  imported: number;
-  skipped: number;
-  rejected: number;
-  status: IngestionStatus;
-};
+import {
+  IngestionCounts,
+  IngestionStatus,
+  IngestionResult,
+  IngestionStage,
+} from "./ingestion-result.type";
 
 @Injectable()
 export class NewsIngestionService {
-  private readonly logger: Logger = new Logger(NewsIngestionService.name);
-
   constructor(
     private readonly collectorsRegistry: CollectorsRegistry,
     private readonly articlesService: ArticlesService,
     private readonly sourcesService: SourcesService,
   ) {}
 
-  async ingestFromSource(source: Source): Promise<IngestionStats> {
-    const stats: IngestionStats = {
+  async ingestFromSource(source: Source): Promise<IngestionResult> {
+    const stats: IngestionCounts = {
       total: null,
       imported: 0,
       skipped: 0,
       rejected: 0,
-      status: IngestionStatus.FAILED,
     };
+
+    let stage: IngestionStage = "collecting";
 
     try {
       if (!source) {
@@ -53,6 +44,8 @@ export class NewsIngestionService {
       stats.rejected = collectionResult.rejected;
 
       const collectedItems = collectionResult.items;
+
+      stage = "saving-articles";
 
       for (const item of collectedItems) {
         const article = new Article(
@@ -77,26 +70,39 @@ export class NewsIngestionService {
         }
       }
 
+      let result: IngestionResult;
+
       if (stats.rejected === 0) {
-        stats.status = IngestionStatus.SUCCESS;
+        result = { ...stats, status: IngestionStatus.SUCCESS };
       } else if (stats.rejected === stats.total) {
-        stats.status = IngestionStatus.FAILED;
+        result = {
+          ...stats,
+          status: IngestionStatus.FAILED,
+          failure: {
+            stage: "collecting",
+            reason: "all-items-rejected",
+          },
+        };
       } else {
-        stats.status = IngestionStatus.PARTIAL;
+        result = { ...stats, status: IngestionStatus.PARTIAL };
       }
 
-      if (stats.status !== IngestionStatus.FAILED) {
+      if (result.status !== IngestionStatus.FAILED) {
+        stage = "updating-source-timestamp";
         await this.sourcesService.updateLastCollectedAt(source.id);
       }
 
-      return stats;
+      return result;
     } catch (error) {
-      this.logger.error(
-        `Error importing news from source ${source?.name ?? "unknown"}:`,
-        error,
-      );
-      stats.status = IngestionStatus.FAILED;
-      return stats;
+      return {
+        ...stats,
+        status: IngestionStatus.FAILED,
+        failure: {
+          stage,
+          reason: "exception",
+          cause: error,
+        },
+      };
     }
   }
 }

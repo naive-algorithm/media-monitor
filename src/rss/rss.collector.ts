@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { formatLogMessage } from "../common/logging/format-log-message";
 import { XMLParser } from "fast-xml-parser";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
@@ -13,6 +14,8 @@ import { RssItemDto } from "./rss-item.dto";
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+const RSS_FETCH_TIMEOUT_MS = 15_000;
 
 class InvalidRssItemError extends Error {
   constructor(message: string) {
@@ -42,7 +45,9 @@ export class RssCollector extends Collector {
       rejected: 0,
     };
 
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(RSS_FETCH_TIMEOUT_MS),
+    });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status} : ${res.statusText}`);
     }
@@ -61,7 +66,9 @@ export class RssCollector extends Collector {
         collectionResult.items.push(normalizationResult.value);
       } else if (normalizationResult.reason instanceof InvalidRssItemError) {
         this.logger.warn(
-          `Error processing RSS item: ${normalizationResult.reason}`,
+          formatLogMessage("rss.item_rejected", {
+            reason: normalizationResult.reason.message,
+          }),
         );
         collectionResult.rejected++;
       } else if (normalizationResult.reason instanceof Error) {
