@@ -9,4 +9,9 @@ export type StartIngestionRunInput = {
 
 export type FinishIngestionRunInput = IngestionCounts & {
   status: "SUCCESS" | "PARTIAL" | "FAILED" | "SKIPPED";
+  failure?: {
+    stage: string;
+    reason: string;
+    message: string;
+  };
 };

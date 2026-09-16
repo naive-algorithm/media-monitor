@@ -30,6 +30,9 @@ CREATE TABLE ingestion_runs (
     rejected INT NOT NULL DEFAULT 0 CHECK (rejected >= 0),
     skipped INT NOT NULL DEFAULT 0 CHECK (skipped >= 0),
     status ingestion_status NOT NULL DEFAULT 'RUNNING',
+    failure_stage TEXT,
+    failure_reason TEXT,
+    error_message TEXT,
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     finished_at TIMESTAMPTZ
 );

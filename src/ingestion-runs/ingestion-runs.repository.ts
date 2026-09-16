@@ -1,7 +1,10 @@
 import { Injectable, Inject } from "@nestjs/common";
 import { Pool } from "pg";
 import { DATABASE_POOL } from "src/database/database.constant";
-import { StartIngestionRunInput, FinishIngestionRunInput } from "./ingestion-runs.type";
+import {
+  StartIngestionRunInput,
+  FinishIngestionRunInput,
+} from "./ingestion-runs.type";
 
 @Injectable()
 export class IngestionRunsRepository {
@@ -30,10 +33,22 @@ export class IngestionRunsRepository {
     const result = await this.pool.query(
       `
         UPDATE ingestion_runs
-        SET total = $1, imported = $2, skipped = $3, rejected = $4, status = $5, finished_at = NOW()
-        WHERE id = $6 AND finished_at IS NULL
+        SET total = $1, imported = $2, skipped = $3, rejected = $4,
+        status = $5, failure_stage = $6, failure_reason = $7,
+        error_message = $8, finished_at = NOW()
+        WHERE id = $9 AND finished_at IS NULL
         `,
-      [input.total, input.imported, input.skipped, input.rejected, input.status, runId],
+      [
+        input.total,
+        input.imported,
+        input.skipped,
+        input.rejected,
+        input.status,
+        input.failure?.stage ?? null,
+        input.failure?.reason ?? null,
+        input.failure?.message ?? null,
+        runId,
+      ],
     );
 
     if (result.rowCount === 0) {

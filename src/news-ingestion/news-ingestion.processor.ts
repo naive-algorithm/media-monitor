@@ -42,6 +42,7 @@ export class NewsIngestionProcessor
 
   async process(job: Job<IngestSourceJobData>): Promise<IngestSourceJobResult> {
     const startedAt = performance.now();
+
     if (job.name !== INGEST_SOURCE_JOB_NAME) {
       throw new UnrecoverableError(`Unknown job type: ${job.name}`);
     }
@@ -53,31 +54,11 @@ export class NewsIngestionProcessor
       }),
     );
 
-    const sourceId = job.data.sourceId;
     const source = await this.loadSource(job);
-
-    const runId = await this.ingestionRunsService.recordRunStart({
-      sourceId: source.id,
-      jobId: job.id!,
-      attempt: job.attemptsStarted,
-    });
+    const runId = await this.recordRunStart(job, source);
 
     if (!source.isEnabled) {
-      await this.ingestionRunsService.recordRunFinish(runId, {
-        total: null,
-        imported: 0,
-        rejected: 0,
-        skipped: 0,
-        status: "SKIPPED",
-      });
-      this.logger.log(
-        formatLogMessage(`${source.name} — ingestion skipped`, {
-          jobId: job.id,
-          sourceId,
-          reason: "source-disabled",
-          durationMs: Math.round(performance.now() - startedAt),
-        }),
-      );
+      await this.recordRunSkippedSafely(runId, job);
       return {
         status: "SKIPPED",
         reason: "source-disabled",
@@ -88,7 +69,7 @@ export class NewsIngestionProcessor
     const ingestionResult =
       await this.newsIngestionService.ingestFromSource(source);
 
-    await this.ingestionRunsService.recordRunFinish(runId, ingestionResult);
+    await this.recordRunFinishSafely(runId, job, ingestionResult);
 
     this.logIngestionResult(
       job,
@@ -105,6 +86,65 @@ export class NewsIngestionProcessor
       status: "PROCESSED",
       ingestion: ingestionResult,
     };
+  }
+
+  private async recordRunStart(
+    job: Job<IngestSourceJobData>,
+    source: Source,
+  ): Promise<number> {
+    try {
+      return await this.ingestionRunsService.recordRunStart({
+        sourceId: source.id,
+        jobId: job.id!,
+        attempt: job.attemptsStarted,
+      });
+    } catch (error: unknown) {
+      this.logger.error(
+        formatLogMessage("Failed to record ingestion run start", {
+          jobId: job.id,
+          sourceId: job.data.sourceId,
+          cause: error,
+        }),
+      );
+      throw error;
+    }
+  }
+
+  private async recordRunFinishSafely(
+    runId: number,
+    job: Job<IngestSourceJobData>,
+    result: IngestionResult,
+  ): Promise<void> {
+    try {
+      await this.ingestionRunsService.recordRunFinish(runId, result);
+    } catch (error: unknown) {
+      this.logger.error(
+        formatLogMessage("Failed to record ingestion run finish", {
+          runId,
+          jobId: job.id,
+          sourceId: job.data.sourceId,
+          cause: error,
+        }),
+      );
+    }
+  }
+
+  private async recordRunSkippedSafely(
+    runId: number,
+    job: Job<IngestSourceJobData>,
+  ): Promise<void> {
+    try {
+      await this.ingestionRunsService.recordRunSkipped(runId);
+    } catch (error: unknown) {
+      this.logger.error(
+        formatLogMessage("Failed to record ingestion run skip", {
+          runId,
+          jobId: job.id,
+          sourceId: job.data.sourceId,
+          cause: error,
+        }),
+      );
+    }
   }
 
   private async loadSource(job: Job<IngestSourceJobData>): Promise<Source> {
