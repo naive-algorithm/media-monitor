@@ -125,10 +125,15 @@ export class RssCollector extends Collector {
       throw new InvalidRssItemError(`Invalid publication date: ${item.guid}`);
     }
 
+    const title = this.htmlToTextConverter(item.title).trim();
+    // if the title consisted only of HTML tags, it will be empty after conversion
+    if (!title) {
+      throw new InvalidRssItemError(`Empty title: ${item.guid}`);
+    }
     const description = this.htmlToTextConverter(item.description ?? "").trim();
 
     return {
-      title: item.title,
+      title,
       description,
       url: item.link,
       publishedAt: date,
