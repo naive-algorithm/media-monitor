@@ -21,7 +21,18 @@ The analytical output consists of topic time series and the associated publicati
 
 ## Current status
 
-**The ingestion pipeline is operational:** REST API, scheduler, a separate worker, partial-failure handling, idempotent article persistence, and an attempt history in PostgreSQL. Background classification, financial data, analytical endpoints, and a UI are planned next. The current version is intended for local use with trusted sources.
+**Asynchronous ingestion is operational:** REST API, scheduler, separate worker, idempotent persistence, and attempt history in PostgreSQL. **A NestJS classification adapter has been implemented and exercised with the local model**; queue integration, persisted topics, and topic-based retrieval are not yet complete. Topic time series and comparison with financial indicators are the next stages. The current version is intended for local use with trusted sources.
+
+## Classification: implemented adapter
+
+[DebertaClassifierAdapter](src/classification/adapters/deberta/deberta-classifier.adapter.ts) implements the `ArticleClassifier` contract and performs zero-shot classification of English headlines and RSS excerpts using Transformers.js and ONNX Runtime. It uses a pinned DeBERTa revision with FP32 CPU inference; no external LLM API is required.
+
+- 40 categories from a selected and adapted subset of IPTC Media Topics; an article may receive multiple topics.
+- Input is a normalized title and up to 1,200 description characters. Version `0.1.0` accepts scores of at least `0.8`, without supplementary keyword rules.
+- Output is topic assignments with scores and the classifier version, or `UNCLASSIFIED`. No accepted topics is not a technical failure; model scores are not calibrated probabilities.
+- The model is loaded during adapter initialization and reused. Weights are not included in the repository; `CLASSIFIER_CACHE_DIR` defaults to `.cache/models/deberta`. Network downloads are disabled during normal initialization.
+
+The module is not yet connected to the API or ingestion worker, so ordinary ingestion startup does not load a model. A separate classification worker and a reproducible initial model provisioning workflow remain to be added. A single-article execution check does not establish corpus-level quality; earlier experimental metrics do not automatically apply to this version.
 
 ## Roadmap
 
@@ -30,14 +41,14 @@ Development proceeds from data collection to topic-based retrieval, then coverag
 | Stage | Status | Outcome |
 |---|---|---|
 | News collection and storage | Implemented | RSS, separate worker, retries, deduplication, attempt history with diagnostics |
-| Classification | Planned | Background article processing, persisted topics and classifier version |
+| Classification | Adapter implemented; integration in progress | Queue, separate worker, versioned results in PostgreSQL |
 | Topic-based retrieval | Planned | Paginated articles by topic, date, and source; access to articles with no assigned topics |
 | Coverage analytics | Planned | Article counts and topic shares over time, with classification coverage |
 | Indicator comparison | Planned | One economic or financial time series and news preceding a selected change |
 
 ### Target architecture
 
-Groups represent process and infrastructure boundaries. Arrows show calls and dependency access, not just data flow. Dashed arrows represent planned connections; the corresponding components are marked “planned”.
+Groups represent process and infrastructure boundaries. Arrows show calls and dependency access, not just data flow. Dashed arrows represent planned connections; the corresponding components are marked “planned”. The DeBERTa adapter is implemented but shown inside its future worker process; that process is not yet available.
 
 ```mermaid
 flowchart TD
@@ -63,9 +74,8 @@ flowchart TD
     end
 
     subgraph CLASSIFY["Classification worker process · planned"]
-        CPROC["Classification processor"] -.-> CSERVICE["ClassificationService"]
-        CSERVICE -.-> ADAPTER["Classifier adapter"]
-        ADAPTER -.-> MODEL["Local model"]
+        CPROC["Classification processor · planned"] -.-> ADAPTER["DeBERTa adapter · implemented"]
+        ADAPTER --> MODEL["Local model · CPU"]
     end
 
     DB[("PostgreSQL — one shared database")]
@@ -83,7 +93,7 @@ flowchart TD
     CP -. "Select unprocessed articles" .-> DB
     CP -. "Jobs by articleId" .-> CQ
     CQ -.-> CPROC
-    CSERVICE -. "Read article / persist result" .-> DB
+    CPROC -. "Read article / persist result" .-> DB
     ANALYTICS -. "Read topics, articles, and time series" .-> DB
 ```
 
@@ -104,6 +114,7 @@ Planned storage: `topics` as the topic catalog, `article_classifications` for re
 | Extensible adapters and Nest Discovery | [CollectorsRegistry](src/collectors/collectors.registry.ts) |
 | External data validation and RSS normalization | [RssCollector](src/rss/rss.collector.ts) |
 | Parameterized SQL and uniqueness conflicts | [ArticlesRepository](src/articles/repositories/articles.repository.ts) |
+| Zero-shot classification and model lifecycle | [DebertaClassifierAdapter](src/classification/adapters/deberta/deberta-classifier.adapter.ts) |
 | Attempt history | [IngestionRunsRepository](src/ingestion-runs/ingestion-runs.repository.ts) |
 | Database constraints and relationships | [schema.sql](src/database/schemas/schema.sql) |
 
@@ -120,7 +131,7 @@ Planned storage: `topics` as the topic catalog, `article_classifications` for re
 - REST API to create, retrieve, enable, and disable sources.
 - RSS ingestion jobs scheduled on application startup and every 10 minutes, executed by a separate worker process.
 - Storage of article titles, descriptions, URLs, external IDs, and publication dates.
-- HTML-to-text conversion for descriptions: entity decoding, paragraph preservation, and trimming; link URLs are not appended to the text.
+- HTML-to-text conversion for titles and descriptions; titles empty after cleanup are rejected: entity decoding, paragraph preservation, and trimming; link URLs are not appended to the text.
 - Support for both single and multiple RSS entries, field validation, and rejection of invalid items.
 - Shared `Collector` / `CollectionResult` / `CollectedItem` contracts; automatic registration of decorated providers through Nest Discovery.
 - Duplicate detection by `(external_id, source_id)` using a PostgreSQL unique constraint and `ON CONFLICT DO NOTHING`.
@@ -295,14 +306,13 @@ Scaffold tests have been removed; meaningful automated tests are still to be add
 - Descriptions are stripped of HTML but may retain publisher boilerplate such as `Continue reading...`. They are not necessarily full article text; video entries and paywalled publications are not treated separately.
 - Updated publications retaining the same external ID within a source are skipped. Different publications about the same event are not merged: ingestion deduplication is not semantic deduplication.
 - An `ingestion_runs` record is created after loading the source, so source lookup failures are not recorded there. There is no history API or reconciliation of stale `RUNNING` records. `error_message` stores the top-level message; nested network error causes are available in logs but not stored separately in the database. API pagination is not implemented.
-- HTML entities may remain undecoded in titles: description cleanup does not imply full normalization of all fields.
 - No RSS download size limit, rate limiting, or centralized environment validation. Job deduplication does not replace idempotent article persistence.
 - No authentication or SSRF protection for submitted URLs. The current version is intended for local development, not public API exposure.
 
 ## Engineering backlog
 
 - Permanent regression tests for ingestion, queues, and shutdown; CI and working lint configuration.
-- Title normalization before classification; validated annotations and per-topic quality evaluation.
+- Classifier persistence and queue integration; validated annotations and per-topic quality evaluation.
 - Centralized configuration validation and migration tracking.
 - Attempt history API, stale `RUNNING` reconciliation, and richer error diagnostics.
 - Atom as a second general-purpose adapter, after the first end-to-end classification and analytics workflow.
@@ -311,4 +321,4 @@ Before public deployment: protect management endpoints, validate external URLs a
 
 ## License
 
-[MIT](LICENSE).
+Code: [MIT](LICENSE). The taxonomy contains adapted [IPTC Media Topics](https://cv.iptc.org/newscodes/mediatopic/) data under CC BY 4.0; attribution is retained in the JSON. Model weights are distributed separately under their repository's terms.
