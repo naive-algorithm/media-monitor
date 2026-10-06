@@ -1,0 +1,542 @@
+{
+  "source": "https://cv.iptc.org/newscodes/mediatopic/?format=json",
+  "retrievedAt": "2026-09-13T19:41:21.727Z",
+  "dateReleased": "2026-07-02T12:00:00+00:00",
+  "copyrightHolder": "IPTC, International Press Telecommunications Council - https://iptc.org",
+  "license": "http://creativecommons.org/licenses/by/4.0/",
+  "categories": [
+    {
+      "id": "medtop:20000379",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000379",
+      "name": "monetary policy",
+      "definition": "Government bank directed policy on the amount of money in circulation and the rate at which it can be loaned",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000344"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000344",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "central bank monetary policy, interest rates and money supply",
+      "group": "Макроэкономика"
+    },
+    {
+      "id": "medtop:20000370",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000370",
+      "name": "inflation",
+      "definition": "The overall increase in prices and cost of living throughout an economy",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000346"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000346",
+        "http://cv.iptc.org/newscodes/mediatopic/20000344",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "inflation and economy-wide increases in prices and living costs",
+      "group": "Макроэкономика"
+    },
+    {
+      "id": "medtop:20000383",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000383",
+      "name": "recession",
+      "definition": "A decrease in gross domestic product over a period of two quarters in a row",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000346"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000346",
+        "http://cv.iptc.org/newscodes/mediatopic/20000344",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "economic recession and sustained decline in GDP",
+      "group": "Макроэкономика"
+    },
+    {
+      "id": "medtop:20000368",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000368",
+      "name": "government debt",
+      "definition": "Debt incurred when a country borrows funds to pay for public services and projects that it cannot afford based on the amount of taxes it has raised",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000346"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000346",
+        "http://cv.iptc.org/newscodes/mediatopic/20000344",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "government debt and public borrowing",
+      "group": "Макроэкономика"
+    },
+    {
+      "id": "medtop:20000359",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000359",
+      "name": "gross domestic product",
+      "definition": "A measure of a region's economic performance, commonly abbreviated as GDP",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000346"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000346",
+        "http://cv.iptc.org/newscodes/mediatopic/20000344",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "gross domestic product (GDP) and national economic output",
+      "group": "Макроэкономика"
+    },
+    {
+      "id": "medtop:20000533",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000533",
+      "name": "unemployment",
+      "definition": "The state of being available to work but not having a job",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/09000000"],
+      "ancestors": ["http://cv.iptc.org/newscodes/mediatopic/09000000"],
+      "modelLabel": "unemployment and people unable to find jobs",
+      "group": "Макроэкономика"
+    },
+    {
+      "id": "medtop:20000607",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000607",
+      "name": "government budget",
+      "definition": "The proposed expenses and revenues approved by the legislature.",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000593"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000593",
+        "http://cv.iptc.org/newscodes/mediatopic/11000000"
+      ],
+      "modelLabel": "government budgets, planned public spending and revenues",
+      "group": "Макроэкономика"
+    },
+    {
+      "id": "medtop:20000620",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000620",
+      "name": "taxation policy",
+      "definition": "Government programs and policies around the taxation of citizens and entities",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000621"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000621",
+        "http://cv.iptc.org/newscodes/mediatopic/11000000"
+      ],
+      "modelLabel": "taxation policy and government taxes on people and businesses",
+      "group": "Макроэкономика"
+    },
+    {
+      "id": "medtop:20000274",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000274",
+      "name": "banking",
+      "definition": "Financial institutions and services for storing, transmitting, receiving and delivering money",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20001370"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20001370",
+        "http://cv.iptc.org/newscodes/mediatopic/20000209",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "banking institutions and services for deposits, payments and money transfers",
+      "group": "Компании, финансы и труд"
+    },
+    {
+      "id": "medtop:20000396",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000396",
+      "name": "stocks and securities",
+      "definition": "Financial instruments such as company shares and bonds",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000183"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000183",
+        "http://cv.iptc.org/newscodes/mediatopic/20000170",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "stocks, bonds and other financial securities",
+      "group": "Компании, финансы и труд"
+    },
+    {
+      "id": "medtop:20000178",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000178",
+      "name": "corporate earnings",
+      "definition": "Announcements and discussions of corporate earnings",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20001365"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20001365",
+        "http://cv.iptc.org/newscodes/mediatopic/20000170",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "corporate earnings announcements and company profit results",
+      "group": "Компании, финансы и труд"
+    },
+    {
+      "id": "medtop:20000174",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000174",
+      "name": "bankruptcy",
+      "definition": "News about actual bankruptcy filings.",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000183"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000183",
+        "http://cv.iptc.org/newscodes/mediatopic/20000170",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "companies filing for bankruptcy",
+      "group": "Компании, финансы и труд"
+    },
+    {
+      "id": "medtop:20000204",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000204",
+      "name": "merger or acquisition",
+      "definition": "Two or more companies forming a new company mergers, takeovers or acquisitions.",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20001366"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20001366",
+        "http://cv.iptc.org/newscodes/mediatopic/20000170",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "company mergers, acquisitions and takeovers",
+      "group": "Компании, финансы и труд"
+    },
+    {
+      "id": "medtop:20000189",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000189",
+      "name": "layoffs and downsizing",
+      "definition": "Planned or actual reductions in the labor force.",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000188"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000188",
+        "http://cv.iptc.org/newscodes/mediatopic/20000170",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "employer layoffs and planned workforce reductions",
+      "group": "Компании, финансы и труд"
+    },
+    {
+      "id": "medtop:20000530",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000530",
+      "name": "labor strike",
+      "definition": "Groups of employees agreeing to cease work activities with the aim of achieving better pay or work conditions",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000529"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000529",
+        "http://cv.iptc.org/newscodes/mediatopic/20000524",
+        "http://cv.iptc.org/newscodes/mediatopic/09000000"
+      ],
+      "modelLabel": "labor strikes in which employees stop working over pay or conditions",
+      "group": "Компании, финансы и труд"
+    },
+    {
+      "id": "medtop:20000123",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000123",
+      "name": "antitrust regulations",
+      "definition": "laws to promote competition between companies for the benefit of consumers",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000124"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000124",
+        "http://cv.iptc.org/newscodes/mediatopic/20000122",
+        "http://cv.iptc.org/newscodes/mediatopic/20000121",
+        "http://cv.iptc.org/newscodes/mediatopic/02000000"
+      ],
+      "modelLabel": "antitrust laws and regulation of competition between companies",
+      "group": "Компании, финансы и труд"
+    },
+    {
+      "id": "medtop:20001243",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20001243",
+      "name": "oil and gas",
+      "definition": "The exploration, extraction, refining, transporting and marketing of petroleum products and natural gas",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000256"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000256",
+        "http://cv.iptc.org/newscodes/mediatopic/20000209",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "petroleum and natural gas exploration, production, refining, transport and sales",
+      "group": "Энергетика и отрасли"
+    },
+    {
+      "id": "medtop:20000260",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000260",
+      "name": "electricity",
+      "definition": "The power line distribution system and the sale of electrical power at wholesale and retail levels",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20001244"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20001244",
+        "http://cv.iptc.org/newscodes/mediatopic/20000209",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "electric power grids, distribution and electricity sales",
+      "group": "Энергетика и отрасли"
+    },
+    {
+      "id": "medtop:20000257",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000257",
+      "name": "renewable energy",
+      "definition": "Energy derived from sustainable sources",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000256"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000256",
+        "http://cv.iptc.org/newscodes/mediatopic/20000209",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "renewable energy from sustainable sources",
+      "group": "Энергетика и отрасли"
+    },
+    {
+      "id": "medtop:20000265",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000265",
+      "name": "nuclear power",
+      "definition": "Use of radioactive materials for power production",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000256"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000256",
+        "http://cv.iptc.org/newscodes/mediatopic/20000209",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "nuclear power production using radioactive materials",
+      "group": "Энергетика и отрасли"
+    },
+    {
+      "id": "medtop:20000210",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000210",
+      "name": "agriculture",
+      "definition": "The growing and raising of plants and animals for consumption and the processing, cleaning, packing or storage of these products",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000209"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000209",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "agriculture, farming, livestock and agricultural products",
+      "group": "Энергетика и отрасли"
+    },
+    {
+      "id": "medtop:20000316",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000316",
+      "name": "metal and mineral mining and refining",
+      "definition": "The extractive businesses that remove raw materials, including coal, gold iron and copper, from the earth by drilling and pumping, quarrying or mining",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000209"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000209",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "mining and extraction of metals, minerals and coal",
+      "group": "Энергетика и отрасли"
+    },
+    {
+      "id": "medtop:20000235",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000235",
+      "name": "construction and property",
+      "definition": "All items pertaining to the construction and sale of property",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000209"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000209",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "construction of buildings and the sale of real estate",
+      "group": "Энергетика и отрасли"
+    },
+    {
+      "id": "medtop:20000343",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000343",
+      "name": "waterway and maritime transport",
+      "definition": "Commercial movement of people or goods via boats, ships and water",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000337"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000337",
+        "http://cv.iptc.org/newscodes/mediatopic/20000209",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "commercial shipping and transport of passengers or goods by water",
+      "group": "Энергетика и отрасли"
+    },
+    {
+      "id": "medtop:20001298",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20001298",
+      "name": "artificial intelligence",
+      "definition": "An attempt to let computers simulate how the human brain works by applying statistical, heuristic or machine learning methods and algorithms to large datasets. Enables a long range of automatic functions like image recognition and categorization.",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000763"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000763",
+        "http://cv.iptc.org/newscodes/mediatopic/20000756",
+        "http://cv.iptc.org/newscodes/mediatopic/13000000"
+      ],
+      "modelLabel": "artificial intelligence and machine learning technologies",
+      "group": "Технологии, здоровье и среда"
+    },
+    {
+      "id": "medtop:20000230",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000230",
+      "name": "semiconductor and electronic component",
+      "definition": "The basic components that together create working electronic devices such as computer chips, transistors, diodes and integrated circuits",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000225"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000225",
+        "http://cv.iptc.org/newscodes/mediatopic/20000209",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "semiconductors, computer chips and electronic components",
+      "group": "Технологии, здоровье и среда"
+    },
+    {
+      "id": "medtop:20000231",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000231",
+      "name": "software and applications",
+      "definition": "Computer programs including mobile or web apps and operating systems",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000225"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000225",
+        "http://cv.iptc.org/newscodes/mediatopic/20000209",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "computer software, applications and operating systems",
+      "group": "Технологии, здоровье и среда"
+    },
+    {
+      "id": "medtop:20000086",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000086",
+      "name": "cyber crime",
+      "definition": "Criminal activities carried out by means of computers or the internet, such as hacking, phishing scams and identity theft",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000082"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000082",
+        "http://cv.iptc.org/newscodes/mediatopic/02000000"
+      ],
+      "modelLabel": "cybercrime using computers or the internet, including hacking and phishing",
+      "group": "Технологии, здоровье и среда"
+    },
+    {
+      "id": "medtop:20000223",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000223",
+      "name": "pharmaceutical",
+      "definition": "The production of medicines from various chemicals and natural substances and the research and discovery around new medications",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20001354"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20001354",
+        "http://cv.iptc.org/newscodes/mediatopic/20000209",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "pharmaceutical medicines, drug development and manufacturing",
+      "group": "Технологии, здоровье и среда"
+    },
+    {
+      "id": "medtop:20000737",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000737",
+      "name": "medical research",
+      "definition": "Investigation conducted in the fields of health and medicine, such as genetic studies, disease research or pharmaceutical drug trials",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000735"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000735",
+        "http://cv.iptc.org/newscodes/mediatopic/13000000"
+      ],
+      "modelLabel": "medical research, disease studies and clinical trials",
+      "group": "Технологии, здоровье и среда"
+    },
+    {
+      "id": "medtop:20000418",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000418",
+      "name": "climate change",
+      "definition": "All issues relating to extreme changes in climate, including rising global temperature, debate on the causes and solutions of global warming, greenhouse gases and ways to reduce emissions",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/06000000"],
+      "ancestors": ["http://cv.iptc.org/newscodes/mediatopic/06000000"],
+      "modelLabel": "climate change, global warming and greenhouse gas emissions",
+      "group": "Технологии, здоровье и среда"
+    },
+    {
+      "id": "medtop:20000424",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000424",
+      "name": "environmental pollution",
+      "definition": "The contamination of natural resources by harmful substances",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/06000000"],
+      "ancestors": ["http://cv.iptc.org/newscodes/mediatopic/06000000"],
+      "modelLabel": "environmental pollution and contamination of natural resources",
+      "group": "Технологии, здоровье и среда"
+    },
+    {
+      "id": "medtop:20000574",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000574",
+      "name": "election",
+      "definition": "The selection of government representatives by the casting of votes by the populace",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/11000000"],
+      "ancestors": ["http://cv.iptc.org/newscodes/mediatopic/11000000"],
+      "modelLabel": "political elections and voting for government representatives",
+      "group": "Политика и международные отношения"
+    },
+    {
+      "id": "medtop:20000598",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000598",
+      "name": "national security",
+      "definition": "The protection of a political entity",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000593"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000593",
+        "http://cv.iptc.org/newscodes/mediatopic/11000000"
+      ],
+      "modelLabel": "national security and protection of the state",
+      "group": "Политика и международные отношения"
+    },
+    {
+      "id": "medtop:20000056",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000056",
+      "name": "armed conflict",
+      "definition": "Disputes between opposing groups involving the use of weapons, but not necessarily formally declared wars",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/16000000"],
+      "ancestors": ["http://cv.iptc.org/newscodes/mediatopic/16000000"],
+      "modelLabel": "armed conflicts, warfare and fighting between armed groups",
+      "group": "Политика и международные отношения"
+    },
+    {
+      "id": "medtop:20000639",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000639",
+      "name": "diplomacy",
+      "definition": "Negotiations between representatives of nations or groups of nations and the diplomats who are involved in the talks",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000638"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000638",
+        "http://cv.iptc.org/newscodes/mediatopic/11000000"
+      ],
+      "modelLabel": "diplomacy and negotiations between countries",
+      "group": "Политика и международные отношения"
+    },
+    {
+      "id": "medtop:20000642",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000642",
+      "name": "economic sanction",
+      "definition": "Economic measures taken by one country or intergovernmental agency against another such as trade restrictions and embargoes",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000638"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000638",
+        "http://cv.iptc.org/newscodes/mediatopic/11000000"
+      ],
+      "modelLabel": "economic sanctions, embargoes and restrictions against countries",
+      "group": "Политика и международные отношения"
+    },
+    {
+      "id": "medtop:20000377",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000377",
+      "name": "trade policy",
+      "definition": "Governmental decisions on tariffs, shipping, embargoes, and the types of goods and services to be imported and exported",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000373"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000373",
+        "http://cv.iptc.org/newscodes/mediatopic/20000344",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "international trade policy, tariffs and import or export rules",
+      "group": "Политика и международные отношения"
+    },
+    {
+      "id": "medtop:20000374",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000374",
+      "name": "trade agreements",
+      "definition": "Agreements between countries or trading blocs for the sale and purchase of goods and services",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000373"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000373",
+        "http://cv.iptc.org/newscodes/mediatopic/20000344",
+        "http://cv.iptc.org/newscodes/mediatopic/04000000"
+      ],
+      "modelLabel": "trade agreements between countries or trading blocs",
+      "group": "Политика и международные отношения"
+    },
+    {
+      "id": "medtop:20000066",
+      "uri": "http://cv.iptc.org/newscodes/mediatopic/20000066",
+      "name": "protests and demonstrations",
+      "definition": "A non-violent public show of support for or opposition to a cause, idea or policy, in the form of a mass meeting or march",
+      "broader": ["http://cv.iptc.org/newscodes/mediatopic/20000065"],
+      "ancestors": [
+        "http://cv.iptc.org/newscodes/mediatopic/20000065",
+        "http://cv.iptc.org/newscodes/mediatopic/16000000"
+      ],
+      "modelLabel": "peaceful public protests, demonstrations and marches",
+      "group": "Политика и международные отношения"
+    }
+  ],
+  "version": "iptc-subset-40-v1",
+  "selectionRationale": "Economic media monitoring; selected for product relevance, not per-category measured performance. Display groups are not IPTC hierarchy. Multi-label; allow no labels. Original names retained for controlled comparison.",
+  "wordingVersion": "short-explanations-v1",
+  "wordingNote": "Assistant paraphrases of official definitions, fixed before inference. Development experiment after reviewing previous errors, not held-out evidence."
+}

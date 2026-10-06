@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { DebertaClassifierAdapter } from "./adapters/deberta-classifier.adapter";
+import { DebertaClassifierAdapter } from "./adapters/deberta/deberta-classifier.adapter";
 import { ArticleClassifier } from "./article-classifier.abstract";
 
 @Module({
