@@ -46,6 +46,7 @@ export class NewsIngestionProcessor
     if (job.name !== INGEST_SOURCE_JOB_NAME) {
       throw new UnrecoverableError(`Unknown job type: ${job.name}`);
     }
+
     this.logger.debug(
       formatLogMessage("Ingestion started", {
         jobId: job.id,
