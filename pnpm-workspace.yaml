@@ -1,3 +1,9 @@
 allowBuilds:
   '@nestjs/core': true
   msgpackr-extract: true
+  # CPU binaries are bundled; do not download optional CUDA providers.
+  onnxruntime-node: false
+  # Advisory version check; not required at runtime.
+  protobufjs: false
+  # Use packaged platform binaries instead of a local source build.
+  sharp: false
