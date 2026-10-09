@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   OnApplicationShutdown,
   OnModuleInit,
 } from "@nestjs/common";
@@ -7,12 +8,13 @@ import { ConfigService } from "@nestjs/config";
 import { resolve } from "node:path";
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import { formatLogMessage } from "src/common/logging/format-log-message";
 import { pipeline, env as transformersEnv } from "@huggingface/transformers";
 import type { ZeroShotClassificationPipeline } from "@huggingface/transformers";
 import { ArticleClassifier } from "../../article-classifier.abstract";
 import {
-  ClassificationResult,
-  ClassificationInput,
+  ArticleClassifierResult,
+  ArticleClassifierInput,
 } from "../../classification.types";
 
 type ClassificationTaxonomy = {
@@ -30,6 +32,8 @@ export class DebertaClassifierAdapter
   extends ArticleClassifier
   implements OnModuleInit, OnApplicationShutdown
 {
+  private readonly logger = new Logger(DebertaClassifierAdapter.name);
+
   private busy = false;
   private closed = false;
 
@@ -43,6 +47,14 @@ export class DebertaClassifierAdapter
   }
 
   async onModuleInit(): Promise<void> {
+    const startedAt = performance.now();
+    this.logger.log(
+      formatLogMessage("Classifier initialization started", {
+        model: MODEL_ID,
+        revision: MODEL_REVISION,
+      }),
+    );
+
     const cacheDir = this.config.get<string>(
       "CLASSIFIER_CACHE_DIR",
       resolve(process.cwd(), ".cache", "models", "deberta"),
@@ -63,11 +75,21 @@ export class DebertaClassifierAdapter
         session_options: { intraOpNumThreads: 1, interOpNumThreads: 1 },
       },
     );
+
+    this.logger.log(
+      formatLogMessage("Classifier ready", {
+        model: MODEL_ID,
+        classifierVersion: CLASSIFIER_VERSION,
+        durationMs: Math.round(performance.now() - startedAt),
+      }),
+    );
   }
 
-  async classify(input: ClassificationInput): Promise<ClassificationResult> {
+  async classify(
+    input: ArticleClassifierInput,
+  ): Promise<ArticleClassifierResult> {
     if (this.closed) {
-      throw new Error("Classifier is closed");
+      throw new Error("Classifier is shutting down or has been closed");
     }
     if (this.busy) {
       throw new Error("Classifier accepts one article at a time");
@@ -142,12 +164,24 @@ export class DebertaClassifierAdapter
 
   async onApplicationShutdown(): Promise<void> {
     if (this.busy) {
-      throw new Error("Wait for the current classification before closing");
+      throw new Error(
+        "Cannot dispose classifier while classification is in progress",
+      );
     }
 
     if (!this.closed) {
+      // Reject new calls before asynchronous disposal begins. This flag does not
+      // guarantee successful resource release if dispose() rejects.
       this.closed = true;
-      await this.classificationPipeline?.dispose();
+
+      if (this.classificationPipeline === null) {
+        return;
+      }
+
+      this.logger.debug("Classifier resource disposal started");
+      await this.classificationPipeline.dispose();
+      this.classificationPipeline = null;
+      this.logger.log("Classifier resources released");
     }
   }
 
@@ -168,7 +202,7 @@ export class DebertaClassifierAdapter
     return createHash("sha256").update(taxonomyText).digest("hex");
   }
 
-  private prepareInput(input: ClassificationInput): {
+  private prepareInput(input: ArticleClassifierInput): {
     title: string;
     text: string;
   } {

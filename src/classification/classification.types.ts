@@ -1,4 +1,4 @@
-export type ClassificationInput = {
+export type ArticleClassifierInput = {
   title: string;
   description: string | null;
 };
@@ -8,7 +8,7 @@ export type TopicAssignment = {
   score: number;
 };
 
-export type ClassificationResult =
+export type ArticleClassifierResult =
   | {
       status: "CLASSIFIED";
       topics: [TopicAssignment, ...TopicAssignment[]];

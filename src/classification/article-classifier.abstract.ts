@@ -1,8 +1,10 @@
 import {
-  ClassificationInput,
-  ClassificationResult,
+  ArticleClassifierInput,
+  ArticleClassifierResult,
 } from "./classification.types";
 
 export abstract class ArticleClassifier {
-  abstract classify(input: ClassificationInput): Promise<ClassificationResult>;
+  abstract classify(
+    input: ArticleClassifierInput,
+  ): Promise<ArticleClassifierResult>;
 }

@@ -36,3 +36,26 @@ CREATE TABLE ingestion_runs (
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     finished_at TIMESTAMPTZ
 );
+
+CREATE TABLE classification_topics (
+    code TEXT PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TYPE classification_status AS ENUM('CLASSIFIED', 'UNCLASSIFIED');
+
+CREATE TABLE article_classifications (
+    id SERIAL PRIMARY KEY,
+    article_id INT NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    classifier_version TEXT NOT NULL,
+    status classification_status NOT NULL,
+    classified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (article_id, classifier_version)
+);
+
+CREATE TABLE article_classification_topics (
+    classification_id INT NOT NULL REFERENCES article_classifications(id) ON DELETE CASCADE,
+    topic_code TEXT NOT NULL REFERENCES classification_topics(code),
+    score DOUBLE PRECISION NOT NULL CHECK (score >= 0 AND score <= 1),
+    PRIMARY KEY (classification_id, topic_code)
+);

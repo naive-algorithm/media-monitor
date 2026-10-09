@@ -48,6 +48,7 @@
     "@types/html-to-text": "^9.0.4",
     "@types/jest": "^29.5.2",
     "@types/node": "^20.19.43",
+    "@types/pg": "^8.23.1",
     "@types/supertest": "^6.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
