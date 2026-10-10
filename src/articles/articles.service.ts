@@ -19,6 +19,16 @@ export class ArticlesService {
     return article;
   }
 
+  async findArticleIdsPendingClassification(
+    classifierVersion: string,
+    limit: number,
+  ): Promise<number[]> {
+    return this.articlesRepository.findArticleIdsPendingClassification(
+      classifierVersion,
+      limit,
+    );
+  }
+
   async create(article: Article): Promise<CreateArticleResult> {
     return this.articlesRepository.create(article);
   }

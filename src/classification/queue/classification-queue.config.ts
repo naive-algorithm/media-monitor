@@ -1,6 +1,9 @@
 import type { JobsOptions } from "bullmq";
 
-export const NEWS_INGESTION_JOB_OPTIONS = {
+// Bounds the candidate query, not the total queue size or worker throughput.
+export const CLASSIFICATION_BATCH_SIZE = 350;
+
+export const ARTICLE_CLASSIFICATION_JOB_OPTIONS = {
   attempts: 3,
   backoff: {
     type: "exponential",
