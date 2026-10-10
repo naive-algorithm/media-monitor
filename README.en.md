@@ -2,35 +2,37 @@
 
 [Русский](README.md) | English
 
-A media analytics backend for collecting news from multiple sources, monitoring topics, and investigating relationships between news coverage and economic and financial indicators.
+A media analytics backend for collecting news, classifying articles by topic, and exploring relationships between the news agenda and economic or financial indicators.
 
-**TypeScript · Node.js · NestJS · PostgreSQL · BullMQ · Redis**
+**TypeScript · Node.js · NestJS · PostgreSQL · BullMQ · Redis · Transformers.js · ONNX Runtime**
 
-## Purpose
+## Purpose and project status
 
-Media Monitor is being developed to investigate changes in news coverage around movements in economic and financial indicators. The target workflow is to select an indicator and time window, identify topics whose share of coverage increased relative to a baseline, and examine the underlying publications.
+The target workflow is to select an indicator and time window, compare topic counts and shares against a baseline, and inspect the underlying articles. The service supports monitoring, research, and hypothesis generation; temporal alignment is not treated as proof of causality.
 
-The system collects a news corpus with source provenance and publication timestamps. The next stages are topic-based retrieval, time series of article counts and topic shares, and comparison with a selected indicator. The scope includes general news coverage, not only economic reporting; findings are limited to the observed corpus and do not establish causality.
+The project is in early, active development, combining service engineering with applied R&D in text classification and media analysis. The MVP brings together ingestion, classification, topic-based retrieval, and an initial analytics workflow. Further releases will expand functionality and improve models.
 
-The project is in early, active development, combining analytics service engineering with applied R&D in ML classification, taxonomy design, and news analysis. The MVP is the first complete milestone, not the final scope. Further development will expand analytical workflows, improve classification quality, and strengthen operational reliability.
-
-## Current status
-
-| Component | Available now |
+| Subsystem | Current status |
 |---|---|
-| News ingestion | Autonomous RSS ingestion: scheduler, BullMQ, separate worker, normalization, and deduplication |
-| API and diagnostics | Source management, article retrieval, attempt history in PostgreSQL, and contextual error logs |
-| Classification | Minimal end-to-end path: article from DB → local model → result and topics in one transaction; exercised manually |
-| Background classification | BullMQ, scheduling at startup and every 10 minutes, a separate local-model worker, and PostgreSQL persistence |
-| Topic retrieval and analytics | Planned |
+| Sources and articles | REST API, PostgreSQL, source enable/disable controls |
+| News ingestion | RSS adapter, normalization, queue, separate worker, and attempt history |
+| Classification | Local model, separate queue and worker, periodic scheduling, transactional topic persistence |
+| Topic-based retrieval | Next: filters by topic, source, date, and classifier version |
+| Analytics | Planned: news agenda time series and comparison with one economic indicator |
 
-Normal startup runs the API and ingestion worker without loading the model. The current version is intended for local use with trusted sources, not public access to management endpoints.
+## Architecture
 
-## Target MVP architecture
+A modular monolith with a shared codebase and three independently launched processes:
 
-A modular monolith with separate API and background processes, a shared codebase, and PostgreSQL. Redis holds BullMQ job state; PostgreSQL stores articles, sources, attempt history, and classification results.
+| Process | Responsibilities |
+|---|---|
+| API | HTTP endpoints, ingestion and classification scheduling |
+| Ingestion worker | Fetching feeds, validation, normalization, article and attempt persistence |
+| Classification worker | Loading the model, processing articles, persisting classification results |
 
-The diagram shows the **complete target MVP**, not current implementation status: from news collection and classification to topic-based retrieval and comparison with one economic or financial indicator. Implementation status is listed above. Groups represent processes; colors distinguish component roles. Arrows represent calls and data access; all PostgreSQL access goes through repositories, with some intermediate layers omitted.
+Redis stores jobs and their state. PostgreSQL stores domain data and ingestion history. The API and ingestion worker do not load the model. Each process creates its own Nest application context and database pool.
+
+The diagram shows the **complete target MVP**, including topic-based retrieval and analytics still under development. The table above identifies what is implemented.
 
 ```mermaid
 flowchart TB
@@ -95,101 +97,123 @@ flowchart TB
     class DB,IQ,CQ storage
 ```
 
-### Implemented ingestion flow
+## 1. Sources and news ingestion
 
-The scheduler enqueues one job per enabled source. The processor reloads its state, invokes the ingestion service, and records the attempt outcome. `CollectorsRegistry` discovers implementations of the `Collector` contract through Nest Discovery; the RSS adapter validates external data and converts HTML to text.
+### Sources and collectors
 
-Articles are persisted independently: a failure partway through a feed does not roll back completed work. Uniqueness on `(external_id, source_id)` and `ON CONFLICT DO NOTHING` prevent duplicates during repeated execution. Exceptions communicate failures to BullMQ; partial results retain processing counts. `lastCollectedAt` records completed processing, not guaranteed feed completeness.
+A source has a name, URL, collector type, enabled flag, and last completed collection timestamp. The API manages sources and their participation in ingestion.
 
-### Classification
+The `Collector` contract separates source formats from the ingestion workflow. `CollectorsRegistry` discovers marked implementations through Nest Discovery and selects a collector by source type. RSS is implemented; additional formats can use adapters with the same output contract.
 
-`ClassificationService` loads an article through `ArticlesService`, invokes the `ArticleClassifier` contract, and passes the result to its repository. Inference runs **before** opening the transaction. Errors retain the article ID, execution stage, and original cause.
+The RSS adapter parses `rss.channel.item`, accepts a single entry or an array, validates fields, and converts title and description HTML to text. It requires a meaningful title, URL, external ID, and valid publication date. The external ID remains the publisher's identifier, not a semantic fingerprint.
 
-- `classification_topics`: topic catalog.
-- `article_classifications`: result by article and classifier version.
-- `article_classification_topics`: assigned topics and scores.
+Input comes from the feed: descriptions may be excerpts rather than full articles. Publisher boilerplate and format differences belong to ongoing normalization work; fetching paywalled article pages is not part of the pipeline.
 
-The result and assignments are saved atomically. `UNCLASSIFIED` is successful processing without accepted topics, not a technical failure. An UPSERT by article/version replaces the status and assignments in one transaction. If rollback also fails, both errors are preserved and the client is removed from the pool.
+### Execution and persistence
 
-`ClassificationProducerModule` contains the producer and queue registration without loading the model in the API. `ClassificationModule` handles inference and persistence. The producer selects up to 350 articles without a result for the target version, including that version in the payload, job ID, and deduplication key. The algorithm version belongs to the adapter configuration; `classification.config.ts` selects it as `TARGET_CLASSIFIER_VERSION`.
+At API startup and every 10 minutes, the scheduler enqueues one job per enabled source. The processor reloads the source before execution, checks its current state, and invokes `NewsIngestionService`.
 
-A separate worker uses `concurrency: 1`, starts consuming after model initialization, and drains the active job before releasing the model and database during graceful shutdown. The API schedules at startup and every 10 minutes; overlapping passes within one process are skipped. Job concurrency and model computation threads are configured independently.
+Articles are persisted independently: a failure midway through a feed does not roll back earlier articles. `UNIQUE (external_id, source_id)` and `ON CONFLICT DO NOTHING` protect persistence against repeated delivery. Publications retaining the same ID are skipped; different sources reporting the same event remain separate articles.
 
-Terminally failed jobs remain in Redis without automatic removal. Stable job IDs prevent cron from resetting their retry budget; retrying or removing them requires an explicit decision after diagnosis. MVP limitations: failed jobs need maintenance, this protection depends on Redis persistence, and 350 problematic candidates at the front of the selection can block backlog progress. PostgreSQL attempt history and improved candidate selection are next.
+The outcome includes status and counts of fetched, imported, skipped, and rejected entries. `lastCollectedAt` records completed source processing, not guaranteed completeness of a publisher's archive.
 
-Classification quality remains experimental: false assignments with high scores and unclassified articles both occur. Scores are not validated probabilities of correctness. An operational end-to-end pipeline does not replace evaluation against independent annotations.
+### Queue and diagnostics
 
-### Ingestion settings and diagnostics
-
-<details>
-<summary>Retries, limits, attempt history, and shutdown</summary>
-
-- Up to three job attempts with exponential backoff: retry delays of 2 and 4 seconds. Unknown job names, missing sources, and feeds whose entries are all rejected fail without automatic retries. Other exceptions currently allow bounded retries.
-- Up to four active jobs per worker instance. This is neither a requests-per-second limit nor a global limit across processes.
-- Source-level deduplication prevents a second job with the same key while the first is unfinished, including retry backoff. A new scheduled ingestion is allowed once the job finishes. This does not guarantee exactly-once execution.
-- A 15-second timeout covers the RSS request and response body read, not the entire ingestion operation. Connection errors may occur earlier.
-- Redis job retention: up to one day / 1,000 completed jobs and one week / 5,000 failed jobs. Cleanup occurs on subsequent job finalizations, not on a separate timer. PostgreSQL articles are unaffected.
-- Logs include the source, job ID, attempt number and duration, counters, and failure stage and reason. Duration excludes queue wait time and backoff.
-- If recording the start of an attempt fails, ingestion does not begin. Failure to record completion or a skipped outcome is logged separately and does not replace the original ingestion result. A history record may therefore remain `RUNNING` after work has finished; automatic reconciliation is not implemented.
-- PostgreSQL: up to five connections per pool, a 3-second connection timeout, a 30-second idle timeout, and a 10-second `statement_timeout`. The API and worker have separate pools.
-- Shutdown hooks are enabled for worker shutdown and PostgreSQL pool cleanup. Abrupt process termination does not guarantee hook execution; shutdown with an active job still needs an integration test.
-
-</details>
-
-## Classification model and R&D
-
-[DebertaClassifierAdapter](src/classification/adapters/deberta/deberta-classifier.adapter.ts) implements the `ArticleClassifier` contract and performs zero-shot classification of English headlines and RSS excerpts using Transformers.js and ONNX Runtime. It uses a pinned DeBERTa revision with FP32 CPU inference; no external LLM API is required.
-
-- 40 categories from a selected and adapted subset of IPTC Media Topics; an article may receive multiple topics.
-- Input is a normalized title and up to 1,200 description characters. Version `0.1.0` accepts scores of at least `0.8`, without supplementary keyword rules.
-- Output is topic assignments with scores and the classifier version, or `UNCLASSIFIED`. No accepted topics is not a technical failure; model scores are not calibrated probabilities.
-- The model is loaded during adapter initialization and reused. Weights are not included in the repository; `CLASSIFIER_CACHE_DIR` defaults to `.cache/models/deberta`. Network downloads are disabled during normal initialization.
-
-### Experiments conducted
-
-Experiments compared zero-shot DeBERTa variants with embedding similarity between articles and topic descriptions, including multiple aspects per category. Taxonomy size, label wording, thresholds, and supplementary rules were evaluated. DeBERTa-base was selected for the current integration; experimental rules are not included in the application adapter.
-
-### Improvement directions
-
-- Refine topic boundaries and expand the taxonomy based on systematic missed topics and false assignments.
-- Establish reviewed annotations and separate tuning and held-out sets, keeping closely related reports about the same event from crossing the split.
-- Evaluate precision / recall / F1 for article–topic assignments, per-topic performance, and the share of articles without labels alongside memory use and processing time.
-- Compare per-topic thresholds, aspect descriptions, hybrid approaches, and alternative models within comparable compute budgets. Accumulated corrected labels may later support training or fine-tuning.
-
-Historical experiments used small samples with preliminary annotations, including AI-generated labels. They guide hypothesis selection rather than establish the accuracy of the current adapter. The research workflow is not yet packaged as a reproducible benchmark; a standard model provisioning workflow also remains to be added.
-
-## Roadmap
-
-1. **Classification reliability:** attempt history, failed-job retry admission, candidate selection that cannot be blocked by problematic articles, and integration checks for shutdown and retries.
-2. **Topic-based retrieval:** articles by topic, source, and date; pagination, access to unlabeled articles, and classifier error review.
-3. **Coverage analytics:** article counts and topic shares, baseline comparisons, collection completeness, and classification coverage.
-4. **Indicator comparison:** one economic or financial time series and news around a selected change, without mixing classifier versions.
-
-Parallel engineering work: regression tests and CI, working lint configuration, centralized configuration validation, migration tracking, and reconciliation of stale history records. Atom is the next general-purpose adapter after the first end-to-end analytics workflow.
-
-## Structure and conventions
-
-Code is grouped by feature module, then by responsibility. Nest imports and exports define the boundaries; automated boundary checks are not in place yet.
-
-- **Feature modules:** `sources`, `articles`, `news-ingestion`, and `classification` own their workflows and persistence.
-- **Integrations:** `collectors` defines the contract and registry; `collectors/adapters/rss` implements collection. `classification/adapters/deberta` contains the concrete classifier; the taxonomy remains separate from the adapter.
-- **Infrastructure:** `database` owns the pool and SQL schemas; `queue-infrastructure` owns shared BullMQ configuration. `common` holds small shared utilities, not business logic.
-- **Process composition:** `AppModule` and `IngestionWorkerModule` assemble modules and providers. Schedulers and processors initiate workflows; services orchestrate them; repositories execute SQL. Cross-module calls use exported services rather than another module’s repository.
-- **Conventions:** kebab-case and role suffixes (`.service.ts`, `.repository.ts`, `.adapter.ts`, `.error.ts`). Related types stay together; subdirectories group adapters, DTOs, and errors without imposing a layer directory tree on every module.
-
-Attempt history and scheduling live in `news-ingestion/runs` and `news-ingestion/scheduling`. The ingestion worker entry point is `src/ingestion-worker.ts`; `pnpm worker` remains an alias for `pnpm worker:ingestion`. Model and classification settings live in `classification/adapters/deberta/deberta-classifier.config.ts`; the cache path is environment-specific.
-
-### Code navigation
-
-| Area | Implementation |
+| Setting | Value |
 |---|---|
-| Attempt orchestration, job results, and errors | [NewsIngestionProcessor](src/news-ingestion/news-ingestion.processor.ts) |
-| Extensible adapters and Nest Discovery | [CollectorsRegistry](src/collectors/collectors.registry.ts) |
-| External data validation and RSS normalization | [RssCollector](src/collectors/adapters/rss/rss.collector.ts) |
-| Zero-shot classification and model lifecycle | [DebertaClassifierAdapter](src/classification/adapters/deberta/deberta-classifier.adapter.ts) |
-| Classification workflow and contextual errors | [ClassificationService](src/classification/classification.service.ts) |
-| Transactional result and topic persistence | [ClassificationRepository](src/classification/classification.repository.ts) |
-| Database constraints and relationships | [schema.sql](src/database/schemas/schema.sql) |
+| Concurrency | Up to 4 jobs per worker instance |
+| Attempts | Up to 3; exponential backoff of 2 and 4 seconds |
+| HTTP timeout | 15 seconds for request and response body |
+| Job deduplication | By source while the previous job remains unfinished |
+| Redis retention | Completed: up to one day / 1,000; failed: up to one week / 5,000 |
+| History | One attempt record in PostgreSQL `ingestion_runs` |
+
+Unknown operations, missing sources, and feeds with all entries rejected fail without automatic retry. Other technical exceptions allow bounded retries. Redis job cleanup runs on subsequent finalizations and does not remove articles.
+
+Logs include source, job ID, attempt, duration, counters, and failure details. Failure to record an attempt's start prevents ingestion; failure to record its completion is logged separately without replacing the ingestion outcome. An interrupted run can remain `RUNNING`; reconciliation is part of the history roadmap.
+
+Code: [registry](src/collectors/collectors.registry.ts), [RSS adapter](src/collectors/adapters/rss/rss.collector.ts), [processor](src/news-ingestion/news-ingestion.processor.ts).
+
+## 2. Classification
+
+### Model and input
+
+The `ArticleClassifier` contract separates the workflow from the model implementation. `DebertaClassifierAdapter` currently performs zero-shot classification of English texts using Transformers.js and ONNX Runtime, without an external LLM API.
+
+| Setting | Current configuration |
+|---|---|
+| Model | `MoritzLaurer/deberta-v3-base-zeroshot-v2.0`, pinned revision |
+| Execution | CPU, FP32, one intra-op and one inter-op computation thread |
+| Taxonomy | 40 topics from a selected and adapted IPTC Media Topics subset |
+| Input | Title and up to 1,200 description characters |
+| Decision | Multiple topics with score ≥ 0.8, or `UNCLASSIFIED` |
+| Version | `0.1.0` |
+
+The model scores text against category descriptions. Scores select assignments but are not calibrated probabilities of correctness. `UNCLASSIFIED` means successful processing without accepted topics, not a technical error.
+
+The model loads once during worker initialization and is reused. `CLASSIFIER_CACHE_DIR` defaults to `.cache/models/deberta`. Weights are distributed separately; automatic network downloads are disabled during normal startup.
+
+### Scheduling and execution
+
+The API schedules at startup and every 10 minutes. The producer selects up to 350 articles without a result for the **target version**, ordered by ID. This is a query limit, not a requirement to finish the batch within 10 minutes.
+
+Jobs contain `articleId` and `classifierVersion`. A stable `article-ID-v-VERSION` job ID and deduplication key prevent repeated submission of the same work. Another scheduler pass does not add a duplicate batch. A local guard prevents overlapping passes within one API process.
+
+The worker processes one article at a time: database read → inference → transactional persistence. Consumption starts after model initialization. Graceful shutdown stops new work and drains the active job before releasing the model and database.
+
+The processor checks operation name and version; missing articles are not retried. Other technical errors allow up to three attempts with backoff. Outcome logs include article, version, job, attempt, duration, and status. Worker-level `error` events are logged separately from article-processing failures.
+
+### Data and repeated execution
+
+| Table | Purpose |
+|---|---|
+| `classification_topics` | Topic codes and names |
+| `article_classifications` | Result by article/version, status, and timestamp |
+| `article_classification_topics` | Assigned topics and scores for a result |
+
+Inference runs **outside the SQL transaction**. The repository upserts the result, removes previous assignments, and saves the new set in one transaction. Failed writes roll back; if rollback itself fails, both errors are preserved and the connection is discarded.
+
+Terminally failed jobs remain in Redis for diagnosis and explicit retry admission. While the job ID exists, cron cannot create a fresh job with a new attempt counter. Removing the job or clearing Redis removes that protection; successful domain results remain independently stored in PostgreSQL.
+
+The current query targets a bounded corpus: waiting and failed jobs may occupy the first 350 candidate positions. For larger archives, the next step is state-aware candidate selection, backlog control, and PostgreSQL attempt history.
+
+### R&D and quality evaluation
+
+Experiments explored zero-shot DeBERTa, embedding similarity between articles and topic descriptions, multiple category aspects, taxonomy sizes, and thresholds. The application adapter currently uses the model without experimental rules.
+
+The next research iteration combines reviewed annotations, an independent evaluation set, refined category descriptions, and per-topic thresholds. Comparisons include precision / recall / F1, per-topic quality, coverage, latency, and memory. Historical small-sample results are not presented as the current adapter's accuracy.
+
+Classification remains experimental: results are available for inspection and review, while assignment quality develops separately from the technical integration.
+
+Code: [processor](src/classification/queue/classification.processor.ts), [service](src/classification/classification.service.ts), [adapter](src/classification/adapters/deberta/deberta-classifier.adapter.ts), [repository](src/classification/classification.repository.ts).
+
+## 3. Topic-based retrieval and analytics
+
+**Next MVP stage.** Classification results are already persisted; topic endpoints and analytics aggregates are still under development.
+
+Planned workflow:
+
+1. Article retrieval by topic, source, date, and classifier version, with pagination and access to `UNCLASSIFIED`.
+2. Time series of publication counts and topic shares, with an explicit corpus and denominator.
+3. Baseline comparisons, classification coverage, and source availability.
+4. Import of one economic or financial series and comparison with news agenda dynamics.
+5. Navigation from a chart point to the publications behind the aggregate.
+
+Classifier versions remain separate so that a model change is not mistaken for a shift in coverage. Metrics describe observed sources, not all world news. The goal is research and hypothesis testing, not automated trading advice.
+
+## 4. Infrastructure and code organization
+
+Code is grouped by feature: `sources`, `articles`, `collectors`, `news-ingestion`, and `classification`. Adapters, queues, and scheduling have dedicated subdirectories. Processors and schedulers initiate workflows, services coordinate them, and repositories execute parameterized SQL.
+
+`database` owns pool configuration and SQL schemas; `queue-infrastructure` owns shared BullMQ/Redis configuration. `AppModule`, `IngestionWorkerModule`, and `ClassificationWorkerModule` assemble each process. Cross-module calls use exported services.
+
+PostgreSQL defaults: up to 5 connections per process pool, a 3-second connection timeout, 30-second idle timeout, and 10-second statement timeout. Redis uses AOF and `noeviction` in Compose. Model weights and private configuration are excluded from the repository.
+
+Files use kebab-case with role suffixes (`.service.ts`, `.repository.ts`, `.adapter.ts`). Related types are grouped; subdirectories reflect responsibilities rather than every individual type.
+
+### Deployment and operations
+
+The current setup targets local use with trusted sources. Public management API exposure requires authentication, SSRF protection for URL fetching, and resource limits. General article pagination, centralized environment validation, migration tracking, and CI are engineering backlog items. Graceful shutdown hooks do not replace recovery from abrupt process termination.
 
 ## Local setup
 
@@ -275,7 +299,7 @@ pnpm worker:classification
 
 The API enqueues classification jobs at startup and every 10 minutes; without this worker they wait in Redis. Results are stored in the classification tables; topic-based REST endpoints are not implemented yet. Restart the worker after code changes.
 
-The API is available at `http://localhost:3000`. The scheduler enqueues jobs at startup and at minutes 00, 10, 20, 30, 40, and 50 of each hour; the separate worker fetches the feeds. Without a worker, jobs wait in Redis. API startup still depends on infrastructure connectivity, but does not wait for feed downloads. The worker command has no watch mode: restart it after code changes. Fetching news requires internet access; results appear in the worker logs.
+The API is available at `http://localhost:3000`. All three processes start separately; jobs wait in Redis without the corresponding worker. API startup awaits initial enqueueing, not feed downloads or inference. Worker commands do not use watch mode.
 
 ```bash
 curl http://localhost:3000/sources
@@ -310,37 +334,35 @@ Request body for `POST /sources`:
 
 The example URL is a placeholder: replace it with an actual RSS feed URL. Only `collectorType: "rss"` is supported. A new source is picked up on the next scheduled ingestion; there is no dedicated HTTP endpoint for manual execution yet.
 
-## Development and checks
+## Checks and development
 
 ```bash
-# Type-check without generating files
 pnpm exec tsc --noEmit --incremental false
-
-# Build
 pnpm build
-
-# Run the compiled application
-pnpm start:prod
-
-# In a separate terminal: run the compiled ingestion worker
-node dist/ingestion-worker.js
-```
-
-```bash
-# Unit regression tests: no network, PostgreSQL, Redis, or model weights required
 pnpm test --runInBand
 ```
 
-Tests cover RSS normalization, ingestion counts and failures, classification transaction query sequencing, contextual service errors, and adapter behavior (thresholds, output validation, concurrent calls, and disposal). External dependencies are replaced with test doubles: these checks do not evaluate ML quality or establish real PostgreSQL/BullMQ behavior. Integration and e2e tests remain to be added; `pnpm test:e2e` currently reports `No tests found`. ESLint configuration is also still pending.
+57 unit tests cover RSS normalization, ingestion, classification transaction sequencing, service errors, adapter behavior, the producer and processor, and scheduler overlap prevention. External dependencies are replaced: model weights, network access, Redis, and PostgreSQL are not required for unit tests.
 
-## Current limitations
+An isolated BullMQ smoke check with real Redis also exercised manual worker startup, successful execution, retry exhaustion, and retention of a failed job when its ID is submitted again. Automated integration scenarios and ML quality evaluation are separate testing tracks.
 
-- The RSS parser expects `rss.channel.item`, accepting either a single entry or an array. A title, link, `guid`, and valid publication date are required. Not all RSS variants are supported; Atom is not implemented.
-- Descriptions are stripped of HTML but may retain publisher boilerplate such as `Continue reading...`. They are not necessarily full article text; video entries and paywalled publications are not treated separately.
-- Updated publications retaining the same external ID within a source are skipped. Different publications about the same event are not merged: ingestion deduplication is not semantic deduplication.
-- An `ingestion_runs` record is created after loading the source, so source lookup failures are not recorded there. There is no history API or reconciliation of stale `RUNNING` records. `error_message` stores the top-level message; nested network error causes are available in logs but not stored separately in the database. API pagination is not implemented.
-- No RSS download size limit, rate limiting, or centralized environment validation. Job deduplication does not replace idempotent article persistence.
-- No authentication or SSRF protection for submitted URLs. The current version is intended for local development, not public API exposure.
+Run compiled processes in separate terminals:
+
+```bash
+pnpm start:prod
+node dist/ingestion-worker.js
+node dist/classification-worker.js
+```
+
+## Next milestones
+
+1. Complete classification attempt history and retry admission.
+2. Add topic-based retrieval with filters and pagination.
+3. Build time series of counts, topic shares, and coverage.
+4. Integrate one economic indicator and exploratory comparison.
+5. Improve classification using reviewed annotations and expand sources and formats.
+
+After the MVP: broader analytics workflows, reproducible ML experiments, and operational hardening.
 
 ## License
 
