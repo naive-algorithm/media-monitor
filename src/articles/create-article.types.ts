@@ -1,4 +1,4 @@
-import { Article } from "../entities/article.entity";
+import { Article } from "./article.entity";
 
 export enum CreateArticleStatus {
   CREATED = "created",

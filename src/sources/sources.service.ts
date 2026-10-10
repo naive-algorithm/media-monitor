@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { Source } from "./source.entity";
 import { SourcesRepository } from "./sources.repository";
 import { CreateSourceDto } from "./dto/create-source.dto";
-import { NewSource } from "./new-source.type";
+import { NewSource } from "./new-source.types";
 
 @Injectable()
 export class SourcesService {

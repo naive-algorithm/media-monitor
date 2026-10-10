@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Article } from './entities/article.entity';
-import { ArticlesRepository } from './repositories/articles.repository';
-import { CreateArticleResult } from './types/create-article.type';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { Article } from "./article.entity";
+import { ArticlesRepository } from "./articles.repository";
+import { CreateArticleResult } from "./create-article.types";
 
 @Injectable()
 export class ArticlesService {

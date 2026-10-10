@@ -1,8 +1,8 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { Pool } from 'pg';
-import { DATABASE_POOL } from 'src/database/database.constant';
-import { Source } from './source.entity';
-import { NewSource } from './new-source.type';
+import { Injectable, Inject } from "@nestjs/common";
+import { Pool } from "pg";
+import { DATABASE_POOL } from "src/database/database.constant";
+import { Source } from "./source.entity";
+import { NewSource } from "./new-source.types";
 
 @Injectable()
 export class SourcesRepository {
@@ -56,12 +56,7 @@ export class SourcesRepository {
       `INSERT INTO sources (name, url, collector_type, is_enabled) 
        VALUES ($1, $2, $3, $4) 
        RETURNING *`,
-      [
-        source.name,
-        source.url,
-        source.collectorType,
-        source.isEnabled,
-      ],
+      [source.name, source.url, source.collectorType, source.isEnabled],
     );
 
     return this.mapRowToSource(result.rows[0]);
@@ -92,13 +87,13 @@ export class SourcesRepository {
       `UPDATE sources SET last_collected_at = NOW() WHERE id = $1`,
       [sourceId],
     );
-  };
+  }
 
   public async disableSource(sourceId: number): Promise<Source | undefined> {
     const result = await this.pool.query(
       `UPDATE sources SET is_enabled = false WHERE id = $1
        RETURNING *`,
-      [sourceId]
+      [sourceId],
     );
 
     if (result.rows.length === 0) {
@@ -112,8 +107,8 @@ export class SourcesRepository {
     const result = await this.pool.query(
       `UPDATE sources SET is_enabled = true WHERE id = $1
        RETURNING *`,
-      [sourceId]
-    )
+      [sourceId],
+    );
 
     if (result.rows.length === 0) {
       return undefined;
@@ -122,6 +117,6 @@ export class SourcesRepository {
   }
 
   public async delete(id: number) {
-    await this.pool.query('DELETE FROM sources WHERE id = $1', [id]);
+    await this.pool.query("DELETE FROM sources WHERE id = $1", [id]);
   }
 }

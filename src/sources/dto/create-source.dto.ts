@@ -2,15 +2,15 @@ import { IsEnum, IsNotEmpty, IsString, Length, IsUrl } from "class-validator";
 import { CollectorType } from "../../collectors/collector-type.enum";
 
 export class CreateSourceDto {
-    @IsString()
-    @IsNotEmpty()
-    @Length(1, 255)
-    name!: string;
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 255)
+  name!: string;
 
-    @IsUrl()
-    @IsNotEmpty()
-    url!: string;
+  @IsUrl()
+  @IsNotEmpty()
+  url!: string;
 
-    @IsEnum(CollectorType)
-    collectorType!: CollectorType;
+  @IsEnum(CollectorType)
+  collectorType!: CollectorType;
 }

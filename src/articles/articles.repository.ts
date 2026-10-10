@@ -1,11 +1,11 @@
 import { Injectable, Inject } from "@nestjs/common";
-import { Article } from "../entities/article.entity";
+import { Article } from "./article.entity";
 import { Pool } from "pg";
 import { DATABASE_POOL } from "src/database/database.constant";
 import {
   CreateArticleResult,
   CreateArticleStatus,
-} from "../types/create-article.type";
+} from "./create-article.types";
 @Injectable()
 export class ArticlesRepository {
   constructor(@Inject(DATABASE_POOL) private pool: Pool) {}

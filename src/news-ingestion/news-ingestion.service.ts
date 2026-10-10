@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { ArticlesService } from "src/articles/articles.service";
-import { Article } from "src/articles/entities/article.entity";
+import { Article } from "src/articles/article.entity";
 import { Source } from "src/sources/source.entity";
 import { SourcesService } from "src/sources/sources.service";
-import { CreateArticleStatus } from "src/articles/types/create-article.type";
+import { CreateArticleStatus } from "src/articles/create-article.types";
 import { CollectionResult } from "src/collectors/collection-result.types";
 import { CollectorsRegistry } from "src/collectors/collectors.registry";
 import {

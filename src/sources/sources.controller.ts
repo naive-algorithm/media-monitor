@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Param, Body, ParseIntPipe, HttpCode } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  ParseIntPipe,
+  HttpCode,
+} from "@nestjs/common";
 import { SourcesService } from "./sources.service";
 import { CreateSourceDto } from "./dto/create-source.dto";
 
@@ -14,21 +22,21 @@ export class SourcesController {
     return this.sourcesService.findEnabled();
   }
   @Get(":id")
-  async findById(@Param('id', ParseIntPipe) id: number) {
+  async findById(@Param("id", ParseIntPipe) id: number) {
     return this.sourcesService.findById(id);
   }
   @Post()
-    async create(@Body() dto: CreateSourceDto) {
+  async create(@Body() dto: CreateSourceDto) {
     return this.sourcesService.create(dto);
   }
   @Post(":id/enable")
   @HttpCode(204)
-    async enableSource(@Param('id', ParseIntPipe) id: number) {
+  async enableSource(@Param("id", ParseIntPipe) id: number) {
     return await this.sourcesService.enableSource(id);
   }
   @Post(":id/disable")
   @HttpCode(204)
-    async disableSource(@Param('id', ParseIntPipe) id: number) {
+  async disableSource(@Param("id", ParseIntPipe) id: number) {
     return await this.sourcesService.disableSource(id);
   }
 }
