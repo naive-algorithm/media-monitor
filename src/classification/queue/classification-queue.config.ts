@@ -13,8 +13,6 @@ export const ARTICLE_CLASSIFICATION_JOB_OPTIONS = {
     age: 24 * 60 * 60,
     count: 1_000,
   },
-  removeOnFail: {
-    age: 7 * 24 * 60 * 60,
-    count: 5_000,
-  },
+  // Retry/remove explicitly after diagnosis; cron must not reset the retry budget.
+  removeOnFail: false,
 } satisfies JobsOptions;

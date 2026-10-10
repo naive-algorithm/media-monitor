@@ -17,11 +17,7 @@ import type { ClassifyArticleJobData } from "./classify-article-job.types";
 export class ClassificationProducer {
   constructor(
     @InjectQueue(ARTICLE_CLASSIFICATION_QUEUE_NAME)
-    private readonly queue: Queue<
-      ClassifyArticleJobData,
-      unknown,
-      typeof ARTICLE_CLASSIFICATION_JOB_NAME
-    >,
+    private readonly queue: Queue<ClassifyArticleJobData>,
     private readonly articlesService: ArticlesService,
   ) {}
 
@@ -31,6 +27,8 @@ export class ClassificationProducer {
       { articleId, classifierVersion: TARGET_CLASSIFIER_VERSION },
       {
         ...ARTICLE_CLASSIFICATION_JOB_OPTIONS,
+        // Retained failed jobs block automatic re-enqueueing of this version.
+        jobId: `article-${articleId}-v-${TARGET_CLASSIFIER_VERSION}`,
         deduplication: {
           id: `article-${articleId}-v-${TARGET_CLASSIFIER_VERSION}`,
         },

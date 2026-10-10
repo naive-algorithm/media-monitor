@@ -21,7 +21,7 @@ The project is in early, active development, combining analytics service enginee
 | News ingestion | Autonomous RSS ingestion: scheduler, BullMQ, separate worker, normalization, and deduplication |
 | API and diagnostics | Source management, article retrieval, attempt history in PostgreSQL, and contextual error logs |
 | Classification | Minimal end-to-end path: article from DB → local model → result and topics in one transaction; exercised manually |
-| Background classification | Producer with versioned jobs and bounded selection is implemented; scheduler and separate worker are not connected yet |
+| Background classification | BullMQ, scheduling at startup and every 10 minutes, a separate local-model worker, and PostgreSQL persistence |
 | Topic retrieval and analytics | Planned |
 
 Normal startup runs the API and ingestion worker without loading the model. The current version is intended for local use with trusted sources, not public access to management endpoints.
@@ -111,9 +111,13 @@ Articles are persisted independently: a failure partway through a feed does not 
 
 The result and assignments are saved atomically. `UNCLASSIFIED` is successful processing without accepted topics, not a technical failure. An UPSERT by article/version replaces the status and assignments in one transaction. If rollback also fails, both errors are preserved and the client is removed from the pool.
 
-`ClassificationProducerModule` contains the producer and queue registration without loading the model. These files live in `classification/queue`. `ClassificationModule` handles inference and persistence. The producer selects articles without a result for the target version and includes that version in the job payload and deduplication key. The algorithm version belongs to the adapter configuration; `classification.config.ts` selects it as `TARGET_CLASSIFIER_VERSION`. Handling terminally failed jobs before re-enqueueing remains pending.
+`ClassificationProducerModule` contains the producer and queue registration without loading the model in the API. `ClassificationModule` handles inference and persistence. The producer selects up to 350 articles without a result for the target version, including that version in the payload, job ID, and deduplication key. The algorithm version belongs to the adapter configuration; `classification.config.ts` selects it as `TARGET_CLASSIFIER_VERSION`.
 
-Background integration will use a separate worker with `concurrency: 1` and a periodic producer selecting a bounded batch of pending articles, with one job per `articleId`. This supports both new publications and the existing backlog. Job concurrency and model computation threads are configured independently.
+A separate worker uses `concurrency: 1`, starts consuming after model initialization, and drains the active job before releasing the model and database during graceful shutdown. The API schedules at startup and every 10 minutes; overlapping passes within one process are skipped. Job concurrency and model computation threads are configured independently.
+
+Terminally failed jobs remain in Redis without automatic removal. Stable job IDs prevent cron from resetting their retry budget; retrying or removing them requires an explicit decision after diagnosis. MVP limitations: failed jobs need maintenance, this protection depends on Redis persistence, and 350 problematic candidates at the front of the selection can block backlog progress. PostgreSQL attempt history and improved candidate selection are next.
+
+Classification quality remains experimental: false assignments with high scores and unclassified articles both occur. Scores are not validated probabilities of correctness. An operational end-to-end pipeline does not replace evaluation against independent annotations.
 
 ### Ingestion settings and diagnostics
 
@@ -156,7 +160,7 @@ Historical experiments used small samples with preliminary annotations, includin
 
 ## Roadmap
 
-1. **Background classification:** separate queue and worker, idempotent repeated persistence, coordinated worker/model shutdown.
+1. **Classification reliability:** attempt history, failed-job retry admission, candidate selection that cannot be blocked by problematic articles, and integration checks for shutdown and retries.
 2. **Topic-based retrieval:** articles by topic, source, and date; pagination, access to unlabeled articles, and classifier error review.
 3. **Coverage analytics:** article counts and topic shares, baseline comparisons, collection completeness, and classification coverage.
 4. **Indicator comparison:** one economic or financial time series and news around a selected change, without mixing classifier versions.
@@ -262,6 +266,14 @@ Start the worker in a separate terminal:
 ```bash
 pnpm worker:ingestion
 ```
+
+For classification, start another process after provisioning the local model weights:
+
+```bash
+pnpm worker:classification
+```
+
+The API enqueues classification jobs at startup and every 10 minutes; without this worker they wait in Redis. Results are stored in the classification tables; topic-based REST endpoints are not implemented yet. Restart the worker after code changes.
 
 The API is available at `http://localhost:3000`. The scheduler enqueues jobs at startup and at minutes 00, 10, 20, 30, 40, and 50 of each hour; the separate worker fetches the feeds. Without a worker, jobs wait in Redis. API startup still depends on infrastructure connectivity, but does not wait for feed downloads. The worker command has no watch mode: restart it after code changes. Fetching news requires internet access; results appear in the worker logs.
 

@@ -56,7 +56,11 @@ describe("ClassificationProducer", () => {
         ARTICLE_CLASSIFICATION_JOB_NAME,
         { articleId, classifierVersion: TARGET_CLASSIFIER_VERSION },
         expect.objectContaining({
-          deduplication: { id: `article-${articleId}-v-${TARGET_CLASSIFIER_VERSION}` },
+          jobId: `article-${articleId}-v-${TARGET_CLASSIFIER_VERSION}`,
+          removeOnFail: false,
+          deduplication: {
+            id: `article-${articleId}-v-${TARGET_CLASSIFIER_VERSION}`,
+          },
         }),
       );
     }

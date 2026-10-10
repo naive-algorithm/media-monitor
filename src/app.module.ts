@@ -9,6 +9,7 @@ import { NewsIngestionSchedulerModule } from "./news-ingestion/scheduling/news-i
 import { CollectorsModule } from "./collectors/collectors.module";
 import { QueueInfrastructureModule } from "./queue-infrastructure/queue-infrastructure.module";
 import { IngestionRunsModule } from "./news-ingestion/runs/ingestion-runs.module";
+import { ClassificationSchedulerModule } from "./classification/scheduling/classification-scheduler.module";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { IngestionRunsModule } from "./news-ingestion/runs/ingestion-runs.module
     NewsIngestionSchedulerModule,
     CollectorsModule,
     IngestionRunsModule,
+    ClassificationSchedulerModule,
   ],
   controllers: [],
   providers: [],
