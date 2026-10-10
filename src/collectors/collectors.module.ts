@@ -1,7 +1,7 @@
 import { DiscoveryModule } from "@nestjs/core";
 import { Module } from "@nestjs/common";
 import { CollectorsRegistry } from "./collectors.registry";
-import { RssModule } from "src/rss/rss.module";
+import { RssModule } from "src/collectors/adapters/rss/rss.module";
 
 @Module({
   imports: [RssModule, DiscoveryModule],

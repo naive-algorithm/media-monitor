@@ -17,15 +17,19 @@ import {
   ArticleClassifierInput,
 } from "../../classification.types";
 
+import {
+  MODEL_ID,
+  MODEL_REVISION,
+  MODEL_OPTIONS,
+  CLASSIFIER_VERSION,
+  CLASSIFICATION_OPTIONS,
+  TOPIC_SCORE_THRESHOLD,
+  MAX_DESCRIPTION_LENGTH,
+} from "./deberta-classifier.config";
+
 type ClassificationTaxonomy = {
   categories: Array<{ id: string; modelLabel: string }>;
 };
-
-const MODEL_ID = "MoritzLaurer/deberta-v3-base-zeroshot-v2.0";
-const MODEL_REVISION = "8e7e5af5983a0ddb1a5b45a38b129ab69e2258e8";
-const TOPIC_SCORE_THRESHOLD = 0.8;
-const MAX_DESCRIPTION_LENGTH = 1200;
-const CLASSIFIER_VERSION = "0.1.0";
 
 @Injectable()
 export class DebertaClassifierAdapter
@@ -68,12 +72,7 @@ export class DebertaClassifierAdapter
     this.classificationPipeline = await pipeline<"zero-shot-classification">(
       "zero-shot-classification",
       MODEL_ID,
-      {
-        revision: MODEL_REVISION,
-        dtype: "fp32",
-        device: "cpu",
-        session_options: { intraOpNumThreads: 1, interOpNumThreads: 1 },
-      },
+      MODEL_OPTIONS,
     );
 
     this.logger.log(
@@ -110,10 +109,7 @@ export class DebertaClassifierAdapter
       const prediction = await classificationPipeline(
         article.text,
         [...topicIdByModelLabel.keys()],
-        {
-          multi_label: true,
-          hypothesis_template: "This article is about {}.",
-        },
+        CLASSIFICATION_OPTIONS,
       );
 
       if (Array.isArray(prediction)) {

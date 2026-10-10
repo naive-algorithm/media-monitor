@@ -1,14 +1,14 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { formatLogMessage } from "../common/logging/format-log-message";
+import { formatLogMessage } from "../../../common/logging/format-log-message";
 import { XMLParser } from "fast-xml-parser";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
 import { compile, type compiledFunction } from "html-to-text";
-import { Collector } from "../collectors/collector.abstract";
-import { Collects } from "../collectors/collects.decorator";
-import { CollectorType } from "../collectors/collector-type.enum";
-import { CollectionResult } from "../collectors/collection-result.type";
-import { CollectedItem } from "../collectors/collected-item.interface";
+import { Collector } from "../../collector.abstract";
+import { Collects } from "../../collects.decorator";
+import { CollectorType } from "../../collector-type.enum";
+import { CollectionResult } from "../../collection-result.types";
+import { CollectedItem } from "../../collected-item.interface";
 import { RssItemDto } from "./rss-item.dto";
 
 function isRecord(value: unknown): value is Record<string, unknown> {

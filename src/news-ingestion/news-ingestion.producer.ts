@@ -6,7 +6,7 @@ import { NEWS_INGESTION_JOB_OPTIONS } from "./news-ingestion.config";
 import { Queue } from "bullmq";
 import { Injectable } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bullmq";
-import { IngestSourceJobData } from "./ingest-source-job.type";
+import { IngestSourceJobData } from "./ingest-source-job.types";
 import { SourcesService } from "src/sources/sources.service";
 import { Source } from "src/sources/source.entity";
 

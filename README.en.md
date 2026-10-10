@@ -165,11 +165,13 @@ Parallel engineering work: regression tests and CI, working lint configuration, 
 
 Code is grouped by feature module, then by responsibility. Nest imports and exports define the boundaries; automated boundary checks are not in place yet.
 
-- **Feature modules:** `sources`, `articles`, `news-ingestion`, `ingestion-runs`, and `classification` own their workflows and persistence.
-- **Integrations:** `collectors` defines the contract and registry; `rss` implements collection. `classification/adapters/deberta` contains the concrete classifier; the taxonomy remains separate from the adapter.
+- **Feature modules:** `sources`, `articles`, `news-ingestion`, and `classification` own their workflows and persistence.
+- **Integrations:** `collectors` defines the contract and registry; `collectors/adapters/rss` implements collection. `classification/adapters/deberta` contains the concrete classifier; the taxonomy remains separate from the adapter.
 - **Infrastructure:** `database` owns the pool and SQL schemas; `queue-infrastructure` owns shared BullMQ configuration. `common` holds small shared utilities, not business logic.
-- **Process composition:** `AppModule` and `AppWorkerModule` assemble modules and providers. Schedulers and processors initiate workflows; services orchestrate them; repositories execute SQL. Cross-module calls use exported services rather than another module’s repository.
+- **Process composition:** `AppModule` and `IngestionWorkerModule` assemble modules and providers. Schedulers and processors initiate workflows; services orchestrate them; repositories execute SQL. Cross-module calls use exported services rather than another module’s repository.
 - **Conventions:** kebab-case and role suffixes (`.service.ts`, `.repository.ts`, `.adapter.ts`, `.error.ts`). Related types stay together; subdirectories group adapters, DTOs, and errors without imposing a layer directory tree on every module.
+
+Attempt history and scheduling live in `news-ingestion/runs` and `news-ingestion/scheduling`. The ingestion worker entry point is `src/ingestion-worker.ts`; `pnpm worker` remains an alias for `pnpm worker:ingestion`. Model and classification settings live in `classification/adapters/deberta/deberta-classifier.config.ts`; the cache path is environment-specific.
 
 ### Code navigation
 
@@ -177,7 +179,7 @@ Code is grouped by feature module, then by responsibility. Nest imports and expo
 |---|---|
 | Attempt orchestration, job results, and errors | [NewsIngestionProcessor](src/news-ingestion/news-ingestion.processor.ts) |
 | Extensible adapters and Nest Discovery | [CollectorsRegistry](src/collectors/collectors.registry.ts) |
-| External data validation and RSS normalization | [RssCollector](src/rss/rss.collector.ts) |
+| External data validation and RSS normalization | [RssCollector](src/collectors/adapters/rss/rss.collector.ts) |
 | Zero-shot classification and model lifecycle | [DebertaClassifierAdapter](src/classification/adapters/deberta/deberta-classifier.adapter.ts) |
 | Classification workflow and contextual errors | [ClassificationService](src/classification/classification.service.ts) |
 | Transactional result and topic persistence | [ClassificationRepository](src/classification/classification.repository.ts) |
@@ -256,7 +258,7 @@ pnpm start:dev
 Start the worker in a separate terminal:
 
 ```bash
-pnpm worker
+pnpm worker:ingestion
 ```
 
 The API is available at `http://localhost:3000`. The scheduler enqueues jobs at startup and at minutes 00, 10, 20, 30, 40, and 50 of each hour; the separate worker fetches the feeds. Without a worker, jobs wait in Redis. API startup still depends on infrastructure connectivity, but does not wait for feed downloads. The worker command has no watch mode: restart it after code changes. Fetching news requires internet access; results appear in the worker logs.
@@ -307,7 +309,7 @@ pnpm build
 pnpm start:prod
 
 # In a separate terminal: run the compiled ingestion worker
-node dist/worker.js
+node dist/ingestion-worker.js
 ```
 
 Scaffold tests have been removed; meaningful automated tests are still to be added. Jest and its configuration remain, but `pnpm test` and `pnpm test:e2e` currently report `No tests found`. The lint script is not ready either: the repository has no ESLint configuration.

@@ -4,7 +4,7 @@ import { DATABASE_POOL } from "src/database/database.constant";
 import {
   StartIngestionRunInput,
   FinishIngestionRunInput,
-} from "./ingestion-runs.type";
+} from "./ingestion-runs.types";
 
 @Injectable()
 export class IngestionRunsRepository {

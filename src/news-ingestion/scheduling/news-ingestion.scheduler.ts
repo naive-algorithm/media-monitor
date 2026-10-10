@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { formatLogMessage } from "../common/logging/format-log-message";
+import { formatLogMessage } from "../../common/logging/format-log-message";
 import { NewsIngestionProducer } from "src/news-ingestion/news-ingestion.producer";
 
 @Injectable()
@@ -18,8 +18,10 @@ export class NewsIngestionScheduler implements OnApplicationBootstrap {
     try {
       await this.newsIngestionProducer.enqueueIngestionForEnabledSources();
       this.logger.log("ingestion.enqueue_completed");
-    } catch (e) {
-      this.logger.error(formatLogMessage("ingestion.enqueue_failed", { cause: e }));
+    } catch (error) {
+      this.logger.error(
+        formatLogMessage("ingestion.enqueue_failed", { cause: error }),
+      );
     }
   }
 

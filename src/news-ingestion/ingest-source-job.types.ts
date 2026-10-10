@@ -1,8 +1,8 @@
 import { Source } from "src/sources/source.entity";
-import { IngestionResult } from "./ingestion-result.type";
+import { IngestionResult } from "./ingestion-result.types";
 
 export type IngestSourceJobData = {
-    sourceId: Source["id"];
+  sourceId: Source["id"];
 };
 
 export type IngestSourceJobResult =

@@ -13,16 +13,16 @@ import { Job, UnrecoverableError } from "bullmq";
 import {
   IngestSourceJobData,
   IngestSourceJobResult,
-} from "./ingest-source-job.type";
+} from "./ingest-source-job.types";
 import { NewsIngestionService } from "./news-ingestion.service";
 import {
   IngestionFailure,
   IngestionResult,
   IngestionStatus,
-} from "./ingestion-result.type";
+} from "./ingestion-result.types";
 import { SourcesService } from "src/sources/sources.service";
 import { Source } from "src/sources/source.entity";
-import { IngestionRunsService } from "src/ingestion-runs/ingestion-runs.service";
+import { IngestionRunsService } from "src/news-ingestion/runs/ingestion-runs.service";
 
 @Processor(NEWS_INGESTION_QUEUE_NAME, {
   concurrency: 4,

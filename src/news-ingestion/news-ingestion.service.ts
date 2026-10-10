@@ -4,14 +4,14 @@ import { Article } from "src/articles/entities/article.entity";
 import { Source } from "src/sources/source.entity";
 import { SourcesService } from "src/sources/sources.service";
 import { CreateArticleStatus } from "src/articles/types/create-article.type";
-import { CollectionResult } from "src/collectors/collection-result.type";
+import { CollectionResult } from "src/collectors/collection-result.types";
 import { CollectorsRegistry } from "src/collectors/collectors.registry";
 import {
   IngestionCounts,
   IngestionStatus,
   IngestionResult,
   IngestionStage,
-} from "./ingestion-result.type";
+} from "./ingestion-result.types";
 
 @Injectable()
 export class NewsIngestionService {

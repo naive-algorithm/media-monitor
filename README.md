@@ -165,11 +165,13 @@ flowchart TB
 
 Код сгруппирован по функциональным модулям, внутри — по ответственности. Границы задаются импортами и экспортами Nest; автоматических проверок этих границ пока нет.
 
-- **Функциональные модули:** `sources`, `articles`, `news-ingestion`, `ingestion-runs`, `classification` владеют своими сценариями и доступом к данным.
-- **Интеграции:** `collectors` задаёт контракт и реестр, `rss` реализует сборщик; `classification/adapters/deberta` содержит конкретный классификатор. Таксономия хранится отдельно от адаптера.
+- **Функциональные модули:** `sources`, `articles`, `news-ingestion`, `classification` владеют своими сценариями и доступом к данным.
+- **Интеграции:** `collectors` задаёт контракт и реестр, `collectors/adapters/rss` реализует сборщик; `classification/adapters/deberta` содержит конкретный классификатор. Таксономия хранится отдельно от адаптера.
 - **Инфраструктура:** `database` управляет пулом и SQL-схемами, `queue-infrastructure` — общими настройками BullMQ. `common` предназначен для небольших общих утилит, не для бизнес-логики.
-- **Сборка процессов:** `AppModule` и `AppWorkerModule` подключают нужные модули и провайдеры. Планировщик и processor инициируют сценарии; сервис оркестрирует их; репозиторий выполняет SQL. Межмодульные вызовы идут через экспортированные сервисы, а не через чужие репозитории.
+- **Сборка процессов:** `AppModule` и `IngestionWorkerModule` подключают нужные модули и провайдеры. Планировщик и processor инициируют сценарии; сервис оркестрирует их; репозиторий выполняет SQL. Межмодульные вызовы идут через экспортированные сервисы, а не через чужие репозитории.
 - **Конвенции:** kebab-case, суффиксы по роли (`.service.ts`, `.repository.ts`, `.adapter.ts`, `.error.ts`). Связанные типы хранятся вместе; подкаталоги выделяются для адаптеров, DTO и ошибок, без обязательного дерева слоёв в каждом модуле.
+
+История попыток и расписание находятся в `news-ingestion/runs` и `news-ingestion/scheduling`. Точка входа ingestion-worker — `src/ingestion-worker.ts`; `pnpm worker` сохранён как алиас для `pnpm worker:ingestion`. Настройки модели и классификации собраны в `classification/adapters/deberta/deberta-classifier.config.ts`, путь к кэшу задаётся окружением.
 
 ### Навигация по коду
 
@@ -177,7 +179,7 @@ flowchart TB
 |---|---|
 | Оркестрация попытки, результаты задания и ошибки | [NewsIngestionProcessor](src/news-ingestion/news-ingestion.processor.ts) |
 | Расширяемые адаптеры и Nest Discovery | [CollectorsRegistry](src/collectors/collectors.registry.ts) |
-| Валидация внешних данных и нормализация RSS | [RssCollector](src/rss/rss.collector.ts) |
+| Валидация внешних данных и нормализация RSS | [RssCollector](src/collectors/adapters/rss/rss.collector.ts) |
 | Zero-shot-классификация и lifecycle модели | [DebertaClassifierAdapter](src/classification/adapters/deberta/deberta-classifier.adapter.ts) |
 | Сценарий классификации и контекст ошибки | [ClassificationService](src/classification/classification.service.ts) |
 | Транзакция результата и тем | [ClassificationRepository](src/classification/classification.repository.ts) |
@@ -256,7 +258,7 @@ pnpm start:dev
 В отдельном терминале запусти воркер:
 
 ```bash
-pnpm worker
+pnpm worker:ingestion
 ```
 
 API доступен на `http://localhost:3000`. Планировщик ставит задания на старте и на 00, 10, 20, 30, 40 и 50 минутах каждого часа; загрузку фидов выполняет отдельный воркер. Без воркера задания ждут в Redis. Запуск API всё ещё зависит от успешного подключения инфраструктуры, но не ожидает загрузки фидов. Команда воркера без watch: после изменений его нужно перезапустить. Для получения новостей нужен интернет, результаты отображаются в логах воркера.
@@ -307,7 +309,7 @@ pnpm build
 pnpm start:prod
 
 # В отдельном терминале — собранный ingestion-worker
-node dist/worker.js
+node dist/ingestion-worker.js
 ```
 
 Шаблонные тесты удалены; содержательные автоматические тесты ещё предстоит добавить. Jest и его конфигурация сохранены, но `pnpm test` и `pnpm test:e2e` сейчас сообщают `No tests found`. Скрипт lint также пока не готов: конфигурации ESLint в репозитории нет.

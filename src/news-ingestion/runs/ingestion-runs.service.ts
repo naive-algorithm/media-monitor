@@ -3,8 +3,8 @@ import { IngestionRunsRepository } from "./ingestion-runs.repository";
 import {
   FinishIngestionRunInput,
   StartIngestionRunInput,
-} from "./ingestion-runs.type";
-import { IngestionResult } from "src/news-ingestion/ingestion-result.type";
+} from "./ingestion-runs.types";
+import { IngestionResult } from "src/news-ingestion/ingestion-result.types";
 
 @Injectable()
 export class IngestionRunsService {

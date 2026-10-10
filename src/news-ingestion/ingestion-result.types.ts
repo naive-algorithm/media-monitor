@@ -25,13 +25,14 @@ export type IngestionCounts = {
   rejected: number;
 };
 
-export type IngestionResult = IngestionCounts & (
+export type IngestionResult = IngestionCounts &
+  (
     | {
         status: IngestionStatus.SUCCESS | IngestionStatus.PARTIAL;
         failure?: never;
-    }
+      }
     | {
         status: IngestionStatus.FAILED;
         failure: IngestionFailure;
-    }
-)
+      }
+  );
