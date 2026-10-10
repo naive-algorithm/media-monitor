@@ -32,12 +32,10 @@ describe("DebertaClassifierAdapter", () => {
         ],
       }),
     );
-    infer = jest
-      .fn()
-      .mockResolvedValue({
-        labels: ["Topic A", "Topic B"],
-        scores: [TOPIC_SCORE_THRESHOLD, 0.1],
-      });
+    infer = jest.fn().mockResolvedValue({
+      labels: ["Topic A", "Topic B"],
+      scores: [TOPIC_SCORE_THRESHOLD, 0.1],
+    });
     dispose = jest.fn().mockResolvedValue(undefined);
     (pipeline as jest.Mock).mockResolvedValue(
       Object.assign(infer, { dispose }),
@@ -98,6 +96,8 @@ describe("DebertaClassifierAdapter", () => {
     { labels: ["Topic A"], scores: [0.9] },
     { labels: ["Topic A", "Topic B"], scores: [NaN, 0.9] },
     { labels: ["Topic A", "Topic B"], scores: [1.1, 0.9] },
+    { labels: ["Topic A", "Topic B"], scores: [0.9] },
+    { labels: ["Topic A", "Topic B"], scores: [0.9, 0.8, 0.7] },
   ])("rejects invalid model output: %j", async (prediction) => {
     await adapter.onModuleInit();
     infer.mockResolvedValueOnce(prediction);

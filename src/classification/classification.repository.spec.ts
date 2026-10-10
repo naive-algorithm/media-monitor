@@ -28,7 +28,7 @@ describe("ClassificationRepository", () => {
 
   it("saves the result and all assignments on one client before committing", async () => {
     const { repository, query, release, connect } = setup();
-    await repository.create(classified, 42);
+    await repository.save(classified, 42);
     expect(connect).toHaveBeenCalledTimes(1);
     expect(query).toHaveBeenNthCalledWith(1, "BEGIN");
     expect(query).toHaveBeenNthCalledWith(
@@ -38,22 +38,28 @@ describe("ClassificationRepository", () => {
     );
     expect(query).toHaveBeenNthCalledWith(
       3,
-      expect.stringContaining("INSERT INTO article_classification_topics"),
-      [7, "topic-a", 0.9],
+      expect.stringContaining("DELETE FROM article_classification_topics"),
+      [7],
     );
     expect(query).toHaveBeenNthCalledWith(
       4,
       expect.stringContaining("INSERT INTO article_classification_topics"),
+      [7, "topic-a", 0.9],
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      5,
+      expect.stringContaining("INSERT INTO article_classification_topics"),
       [7, "topic-b", 0.85],
     );
-    expect(query).toHaveBeenNthCalledWith(5, "COMMIT");
-    expect(query).toHaveBeenCalledTimes(5);
+    expect(query).toHaveBeenNthCalledWith(6, "COMMIT");
+    expect(query).toHaveBeenCalledTimes(6);
+    expect(release).toHaveBeenCalledWith(false);
     expect(release).toHaveBeenCalledTimes(1);
   });
 
   it("persists UNCLASSIFIED without topic inserts", async () => {
     const { repository, query, release } = setup();
-    await repository.create(
+    await repository.save(
       { status: "UNCLASSIFIED", classifierVersion: "test-v1" },
       42,
     );
@@ -62,25 +68,46 @@ describe("ClassificationRepository", () => {
       "test-v1",
       "UNCLASSIFIED",
     ]);
-    expect(query).toHaveBeenNthCalledWith(3, "COMMIT");
-    expect(query).toHaveBeenCalledTimes(3);
+    expect(query).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining("DELETE FROM article_classification_topics"),
+      [7],
+    );
+    expect(query).toHaveBeenNthCalledWith(4, "COMMIT");
+    expect(query).toHaveBeenCalledTimes(4);
     expect(release).toHaveBeenCalledTimes(1);
   });
 
   it("rolls back a failed assignment, releases the client and preserves the error", async () => {
     const { repository, query, release } = setup();
     const error = new Error("insert failed");
-    query.mockRejectedValueOnce(error);
-    await expect(repository.create(classified, 42)).rejects.toBe(error);
+    query.mockResolvedValueOnce({ rows: [] }).mockRejectedValueOnce(error);
+    await expect(repository.save(classified, 42)).rejects.toBe(error);
     expect(query).toHaveBeenLastCalledWith("ROLLBACK");
     expect(query).not.toHaveBeenCalledWith("COMMIT");
+    expect(release).toHaveBeenCalledWith(false);
     expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves both failures and discards the client if rollback fails", async () => {
+    const { repository, query, release } = setup();
+    const original = new Error("delete failed");
+    const rollback = new Error("connection lost");
+    query.mockRejectedValueOnce(original).mockRejectedValueOnce(rollback);
+    const result = repository.save(classified, 42);
+    await expect(result).rejects.toBeInstanceOf(AggregateError);
+    await expect(result).rejects.toMatchObject({
+      errors: [original, rollback],
+    });
+    expect(query).toHaveBeenLastCalledWith("ROLLBACK");
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(release).toHaveBeenCalledWith(true);
   });
 
   it("rolls back when the result insert returns no ID", async () => {
     const { repository, query, release } = setup();
     query.mockReset().mockResolvedValue({ rows: [] });
-    await expect(repository.create(classified, 42)).rejects.toThrow(
+    await expect(repository.save(classified, 42)).rejects.toThrow(
       "Classification insert returned no row",
     );
     expect(query).toHaveBeenLastCalledWith("ROLLBACK");
@@ -91,7 +118,7 @@ describe("ClassificationRepository", () => {
     const { repository, connect, query, release } = setup();
     const error = new Error("pool unavailable");
     connect.mockRejectedValueOnce(error);
-    await expect(repository.create(classified, 42)).rejects.toBe(error);
+    await expect(repository.save(classified, 42)).rejects.toBe(error);
     expect(query).not.toHaveBeenCalled();
     expect(release).not.toHaveBeenCalled();
   });

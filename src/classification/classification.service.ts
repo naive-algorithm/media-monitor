@@ -36,7 +36,7 @@ export class ClassificationService {
 
       stage = "saving-result";
 
-      await this.classificationRepository.create(result, articleId);
+      await this.classificationRepository.save(result, articleId);
 
       return result;
     } catch (error: unknown) {

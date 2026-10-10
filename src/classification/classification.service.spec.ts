@@ -10,20 +10,20 @@ describe("ClassificationService", () => {
   let service: ClassificationService;
   let findById: jest.Mock;
   let classify: jest.Mock;
-  let create: jest.Mock;
+  let save: jest.Mock;
 
   beforeEach(async () => {
     findById = jest
       .fn()
       .mockResolvedValue({ id: 42, title: "Title", description: null });
     classify = jest.fn().mockResolvedValue(result);
-    create = jest.fn().mockResolvedValue(undefined);
+    save = jest.fn().mockResolvedValue(undefined);
     const module = await Test.createTestingModule({
       providers: [
         ClassificationService,
         { provide: ArticlesService, useValue: { findById } },
         { provide: ArticleClassifier, useValue: { classify } },
-        { provide: ClassificationRepository, useValue: { create } },
+        { provide: ClassificationRepository, useValue: { save } },
       ],
     }).compile();
     service = module.get(ClassificationService);
@@ -36,9 +36,9 @@ describe("ClassificationService", () => {
       title: "Title",
       description: null,
     });
-    expect(create).toHaveBeenCalledWith(result, 42);
+    expect(save).toHaveBeenCalledWith(result, 42);
     expect(classify.mock.invocationCallOrder[0]).toBeLessThan(
-      create.mock.invocationCallOrder[0],
+      save.mock.invocationCallOrder[0],
     );
   });
 
@@ -49,7 +49,7 @@ describe("ClassificationService", () => {
       const failingMethod = {
         "loading-article": findById,
         classifying: classify,
-        "saving-result": create,
+        "saving-result": save,
       }[stage];
       failingMethod.mockRejectedValueOnce(cause);
       const promise = service.classifyArticle(42);
@@ -60,7 +60,7 @@ describe("ClassificationService", () => {
         cause,
       });
       if (stage === "loading-article") expect(classify).not.toHaveBeenCalled();
-      if (stage !== "saving-result") expect(create).not.toHaveBeenCalled();
+      if (stage !== "saving-result") expect(save).not.toHaveBeenCalled();
     },
   );
 });

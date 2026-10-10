@@ -116,6 +116,10 @@ export class DebertaClassifierAdapter
         throw new Error("Expected a single classification result");
       }
 
+      if (prediction.labels.length !== prediction.scores.length) {
+        throw new Error("Model labels and scores must have matching lengths");
+      }
+
       const scores = prediction.labels.map((label, index) => {
         const id = topicIdByModelLabel.get(label);
         const score = prediction.scores[index];

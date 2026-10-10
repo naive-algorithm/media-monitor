@@ -43,12 +43,13 @@ export class SourcesRepository {
     return this.mapRowToSource(result.rows[0]);
   }
 
-  public async findByName(name: string): Promise<Source> {
+  public async findByName(name: string): Promise<Source | undefined> {
     const result = await this.pool.query(
       `SELECT * FROM sources WHERE name = $1`,
       [name],
     );
-    return this.mapRowToSource(result.rows[0]);
+    const row = result.rows[0];
+    return row ? this.mapRowToSource(row) : undefined;
   }
 
   public async create(source: NewSource): Promise<Source> {
