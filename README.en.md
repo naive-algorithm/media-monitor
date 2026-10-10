@@ -21,7 +21,7 @@ The project is in early, active development, combining analytics service enginee
 | News ingestion | Autonomous RSS ingestion: scheduler, BullMQ, separate worker, normalization, and deduplication |
 | API and diagnostics | Source management, article retrieval, attempt history in PostgreSQL, and contextual error logs |
 | Classification | Minimal end-to-end path: article from DB → local model → result and topics in one transaction; exercised manually |
-| Background classification | Queue and separate worker are not connected yet |
+| Background classification | Producer with versioned jobs and bounded selection is implemented; scheduler and separate worker are not connected yet |
 | Topic retrieval and analytics | Planned |
 
 Normal startup runs the API and ingestion worker without loading the model. The current version is intended for local use with trusted sources, not public access to management endpoints.
@@ -109,7 +109,9 @@ Articles are persisted independently: a failure partway through a feed does not 
 - `article_classifications`: result by article and classifier version.
 - `article_classification_topics`: assigned topics and scores.
 
-The result and assignments are saved atomically. `UNCLASSIFIED` is successful processing without accepted topics, not a technical failure. Repeating the same article/version pair currently violates the unique constraint; idempotent retry handling remains to be added.
+The result and assignments are saved atomically. `UNCLASSIFIED` is successful processing without accepted topics, not a technical failure. An UPSERT by article/version replaces the status and assignments in one transaction. If rollback also fails, both errors are preserved and the client is removed from the pool.
+
+`ClassificationProducerModule` contains the producer and queue registration without loading the model. These files live in `classification/queue`. `ClassificationModule` handles inference and persistence. The producer selects articles without a result for the target version and includes that version in the job payload and deduplication key. The algorithm version belongs to the adapter configuration; `classification.config.ts` selects it as `TARGET_CLASSIFIER_VERSION`. Handling terminally failed jobs before re-enqueueing remains pending.
 
 Background integration will use a separate worker with `concurrency: 1` and a periodic producer selecting a bounded batch of pending articles, with one job per `articleId`. This supports both new publications and the existing backlog. Job concurrency and model computation threads are configured independently.
 
