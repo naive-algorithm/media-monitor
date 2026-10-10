@@ -312,7 +312,12 @@ pnpm start:prod
 node dist/ingestion-worker.js
 ```
 
-Scaffold tests have been removed; meaningful automated tests are still to be added. Jest and its configuration remain, but `pnpm test` and `pnpm test:e2e` currently report `No tests found`. The lint script is not ready either: the repository has no ESLint configuration.
+```bash
+# Unit regression tests: no network, PostgreSQL, Redis, or model weights required
+pnpm test --runInBand
+```
+
+Tests cover RSS normalization, ingestion counts and failures, classification transaction query sequencing, contextual service errors, and adapter behavior (thresholds, output validation, concurrent calls, and disposal). External dependencies are replaced with test doubles: these checks do not evaluate ML quality or establish real PostgreSQL/BullMQ behavior. Integration and e2e tests remain to be added; `pnpm test:e2e` currently reports `No tests found`. ESLint configuration is also still pending.
 
 ## Current limitations
 
