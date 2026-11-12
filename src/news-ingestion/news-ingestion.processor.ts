@@ -8,7 +8,7 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { OnWorkerEvent, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Job, UnrecoverableError } from "bullmq";
 import {
   IngestSourceJobData,
@@ -239,6 +239,13 @@ export class NewsIngestionProcessor
         return;
       }
     }
+  }
+
+  @OnWorkerEvent("error")
+  onWorkerError(error: Error): void {
+    this.logger.error(
+      formatLogMessage("News ingestion worker error", { cause: error }),
+    );
   }
 
   async beforeApplicationShutdown() {

@@ -32,10 +32,6 @@ export class NewsIngestionService {
     let stage: IngestionStage = "collecting";
 
     try {
-      if (!source) {
-        throw new Error("Source not found");
-      }
-
       const collectionResult: CollectionResult = await this.collectorsRegistry
         .getCollector(source.collectorType)
         .collect(source.url);
