@@ -2,6 +2,7 @@ import { Logger, NotFoundException } from "@nestjs/common";
 import type { Job } from "bullmq";
 import { ClassificationProcessor } from "./classification.processor";
 import type { ClassificationService } from "../classification.service";
+import type { ClassificationRunsService } from "../runs/classification-runs.service";
 import { ArticleClassificationError } from "../errors/article-classification.error";
 import { TARGET_CLASSIFIER_VERSION } from "../classification.config";
 import { ARTICLE_CLASSIFICATION_JOB_NAME } from "./classification.constants";
@@ -20,6 +21,8 @@ jest.mock("bullmq", () => ({
 describe("ClassificationProcessor", () => {
   let processor: ClassificationProcessor;
   const classify = jest.fn();
+  const recordRunStart = jest.fn();
+  const recordRunFinish = jest.fn();
   const job = {
     id: "test-job",
     name: ARTICLE_CLASSIFICATION_JOB_NAME,
@@ -29,9 +32,15 @@ describe("ClassificationProcessor", () => {
 
   beforeEach(() => {
     classify.mockReset();
-    processor = new ClassificationProcessor({
-      classifyArticle: classify,
-    } as unknown as ClassificationService);
+    recordRunStart.mockReset().mockResolvedValue(7);
+    recordRunFinish.mockReset().mockResolvedValue(undefined);
+    processor = new ClassificationProcessor(
+      { classifyArticle: classify } as unknown as ClassificationService,
+      {
+        recordRunStart,
+        recordRunFinish,
+      } as unknown as ClassificationRunsService,
+    );
     jest.spyOn(Logger.prototype, "log").mockImplementation(() => {});
     jest.spyOn(Logger.prototype, "error").mockImplementation(() => {});
   });
@@ -48,6 +57,10 @@ describe("ClassificationProcessor", () => {
     classify.mockResolvedValueOnce(result);
     await expect(processor.process(job)).resolves.toBe(result);
     expect(classify).toHaveBeenCalledWith(42);
+    expect(recordRunFinish).toHaveBeenCalledWith(7, {
+      status: "SUCCESS",
+      classificationStatus: result.status,
+    });
   });
 
   it("rejects an unknown operation before inference", async () => {
@@ -88,6 +101,38 @@ describe("ClassificationProcessor", () => {
       new Error("DB unavailable"),
     );
     classify.mockRejectedValueOnce(error);
+    await expect(processor.process(job)).rejects.toBe(error);
+    expect(recordRunFinish).toHaveBeenCalledWith(7, {
+      status: "FAILED",
+      failure: {
+        stage: "saving-result",
+        reason: "exception",
+        message: "DB unavailable",
+      },
+    });
+  });
+
+  it("does not fail a successful classification when history finish fails", async () => {
+    const result = {
+      status: "UNCLASSIFIED",
+      classifierVersion: TARGET_CLASSIFIER_VERSION,
+    };
+    classify.mockResolvedValueOnce(result);
+    recordRunFinish.mockRejectedValueOnce(new Error("History unavailable"));
+
+    await expect(processor.process(job)).resolves.toBe(result);
+    expect(Logger.prototype.error).toHaveBeenCalled();
+  });
+
+  it("preserves the classification error when recording failure also fails", async () => {
+    const error = new ArticleClassificationError(
+      42,
+      "classifying",
+      new Error("Inference failed"),
+    );
+    classify.mockRejectedValueOnce(error);
+    recordRunFinish.mockRejectedValueOnce(new Error("History unavailable"));
+
     await expect(processor.process(job)).rejects.toBe(error);
   });
 

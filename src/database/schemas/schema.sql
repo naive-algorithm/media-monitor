@@ -42,13 +42,13 @@ CREATE TABLE classification_topics (
     name TEXT NOT NULL
 );
 
-CREATE TYPE classification_status AS ENUM('CLASSIFIED', 'UNCLASSIFIED');
+CREATE TYPE article_classification_status AS ENUM('CLASSIFIED', 'UNCLASSIFIED');
 
 CREATE TABLE article_classifications (
     id SERIAL PRIMARY KEY,
     article_id INT NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
     classifier_version TEXT NOT NULL,
-    status classification_status NOT NULL,
+    status article_classification_status NOT NULL,
     classified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (article_id, classifier_version)
 );
@@ -58,4 +58,31 @@ CREATE TABLE article_classification_topics (
     topic_code TEXT NOT NULL REFERENCES classification_topics(code),
     score DOUBLE PRECISION NOT NULL CHECK (score >= 0 AND score <= 1),
     PRIMARY KEY (classification_id, topic_code)
+);
+
+CREATE TYPE classification_run_status AS ENUM('RUNNING', 'SUCCESS', 'FAILED');
+
+CREATE TABLE classification_runs (
+    id SERIAL PRIMARY KEY,
+    article_id INT NOT NULL,
+    job_id TEXT NOT NULL,
+    attempt INT NOT NULL CHECK (attempt > 0),
+    classifier_version TEXT NOT NULL,
+    status classification_run_status NOT NULL DEFAULT 'RUNNING',
+    classification_status article_classification_status,
+    failure_stage TEXT,
+    failure_reason TEXT,
+    error_message TEXT,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    finished_at TIMESTAMPTZ,
+    CONSTRAINT article_classification_status_matches_run_status CHECK (
+        (status = 'SUCCESS' AND classification_status IS NOT NULL)
+        OR
+        (status IN ('RUNNING', 'FAILED') AND classification_status IS NULL)
+    ),
+    CONSTRAINT classification_runs_finish_matches_status CHECK (
+        (status = 'RUNNING' AND finished_at IS NULL)
+        OR
+        (status IN ('SUCCESS', 'FAILED') AND finished_at IS NOT NULL)
+    )
 );

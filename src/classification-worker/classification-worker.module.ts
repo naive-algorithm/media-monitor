@@ -4,6 +4,7 @@ import { ClassificationModule } from "src/classification/classification.module";
 import { ClassificationQueueModule } from "src/classification/queue/classification-queue.module";
 import { ClassificationProcessor } from "src/classification/queue/classification.processor";
 import { QueueInfrastructureModule } from "src/queue-infrastructure/queue-infrastructure.module";
+import { ClassificationRunsModule } from "src/classification/runs/classification-runs.module";
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { QueueInfrastructureModule } from "src/queue-infrastructure/queue-infras
     QueueInfrastructureModule,
     ClassificationQueueModule,
     ClassificationModule,
+    ClassificationRunsModule,
   ],
   providers: [ClassificationProcessor],
 })

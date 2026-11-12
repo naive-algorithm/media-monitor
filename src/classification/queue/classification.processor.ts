@@ -15,6 +15,11 @@ import { ClassifyArticleJobData } from "./classify-article-job.types";
 import { TARGET_CLASSIFIER_VERSION } from "../classification.config";
 import { ArticleClassifierResult } from "../classification.types";
 import { ArticleClassificationError } from "../errors/article-classification.error";
+import { ClassificationRunsService } from "../runs/classification-runs.service";
+import type {
+  FinishClassificationRunInput,
+  StartClassificationRunInput,
+} from "../runs/classification-runs.types";
 
 @Processor(ARTICLE_CLASSIFICATION_QUEUE_NAME, {
   concurrency: 1,
@@ -25,39 +30,56 @@ export class ClassificationProcessor
   implements BeforeApplicationShutdown
 {
   private readonly logger = new Logger(ClassificationProcessor.name);
-  constructor(private readonly classificationService: ClassificationService) {
+  constructor(
+    private readonly classificationService: ClassificationService,
+    private readonly classificationRunsService: ClassificationRunsService,
+  ) {
     super();
   }
 
   async process(
     job: Job<ClassifyArticleJobData>,
   ): Promise<ArticleClassifierResult> {
+    if (job.id === undefined) {
+      throw new UnrecoverableError("Classification job ID is not provided");
+    }
+
+    if (job.name !== ARTICLE_CLASSIFICATION_JOB_NAME) {
+      throw new UnrecoverableError(`Unknown job type: ${job.name}`);
+    }
+
+    const { articleId, classifierVersion } = job.data;
+
+    if (classifierVersion !== TARGET_CLASSIFIER_VERSION) {
+      throw new UnrecoverableError(
+        `Classifier version: ${classifierVersion} doesn't match the current classifier version: ${TARGET_CLASSIFIER_VERSION}`,
+      );
+    }
+
     const startedAt = performance.now();
+
     const context = {
       jobId: job.id,
       articleId: job.data.articleId,
       classifierVersion: job.data.classifierVersion,
       attempt: job.attemptsStarted,
     };
+
+    const runId = await this.recordRunStart(context);
+
     try {
-      if (job.name !== ARTICLE_CLASSIFICATION_JOB_NAME) {
-        throw new UnrecoverableError(`Unknown job type: ${job.name}`);
-      }
-
-      const { articleId, classifierVersion } = job.data;
-
-      if (classifierVersion !== TARGET_CLASSIFIER_VERSION) {
-        throw new UnrecoverableError(
-          `Classifier version: ${classifierVersion} doesn't match current classifier version: ${TARGET_CLASSIFIER_VERSION}`,
-        );
-      }
-
       const classificationResult =
         await this.classificationService.classifyArticle(articleId);
+
+      await this.tryRecordRunFinish(runId, {
+        status: "SUCCESS",
+        classificationStatus: classificationResult.status,
+      });
 
       this.logger.log(
         formatLogMessage("Classification succeeded", {
           ...context,
+          runId,
           status: classificationResult.status,
           topicCount:
             classificationResult.status === "CLASSIFIED"
@@ -68,9 +90,24 @@ export class ClassificationProcessor
       );
       return classificationResult;
     } catch (error: unknown) {
+      if (error instanceof ArticleClassificationError) {
+        await this.tryRecordRunFinish(runId, {
+          status: "FAILED",
+          failure: {
+            stage: error.stage,
+            reason: "exception",
+            message:
+              error.cause instanceof Error
+                ? error.cause.message
+                : String(error.cause),
+          },
+        });
+      }
+
       this.logger.error(
         formatLogMessage("Classification attempt failed", {
           ...context,
+          runId,
           stage:
             error instanceof ArticleClassificationError
               ? error.stage
@@ -79,6 +116,7 @@ export class ClassificationProcessor
           cause: error,
         }),
       );
+
       if (
         error instanceof ArticleClassificationError &&
         error.stage === "loading-article" &&
@@ -88,6 +126,40 @@ export class ClassificationProcessor
       }
 
       throw error;
+    }
+  }
+
+  private async recordRunStart(
+    input: StartClassificationRunInput,
+  ): Promise<number> {
+    try {
+      return await this.classificationRunsService.recordRunStart(input);
+    } catch (error: unknown) {
+      this.logger.error(
+        formatLogMessage("Failed to record classification run start", {
+          ...input,
+          cause: error,
+        }),
+      );
+
+      throw error;
+    }
+  }
+
+  private async tryRecordRunFinish(
+    runId: number,
+    outcome: FinishClassificationRunInput,
+  ): Promise<void> {
+    try {
+      await this.classificationRunsService.recordRunFinish(runId, outcome);
+    } catch (error: unknown) {
+      this.logger.error(
+        formatLogMessage("Failed to record classification run finish", {
+          runId,
+          status: outcome.status,
+          cause: error,
+        }),
+      );
     }
   }
 
