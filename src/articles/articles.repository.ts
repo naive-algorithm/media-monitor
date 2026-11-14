@@ -39,6 +39,25 @@ export class ArticlesRepository {
     return this.mapRowToArticle(row);
   }
 
+  async findByTopic(
+    topicCode: string,
+    classifierVersion: string,
+    limit: number,
+  ): Promise<Article[]> {
+    const result = await this.pool.query(
+      `SELECT a.* FROM articles AS a
+       JOIN article_classifications AS c ON a.id = c.article_id
+       JOIN article_classification_topics AS t ON c.id = t.classification_id
+       WHERE t.topic_code = $1 AND c.classifier_version = $2
+       ORDER BY a.published_at DESC, a.id DESC
+       LIMIT $3
+      `,
+      [topicCode, classifierVersion, limit],
+    );
+
+    return result.rows.map((row) => this.mapRowToArticle(row));
+  }
+
   async create(article: Article): Promise<CreateArticleResult> {
     const result = await this.pool.query(
       `

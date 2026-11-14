@@ -2,6 +2,18 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { Article } from "./article.entity";
 import { ArticlesRepository } from "./articles.repository";
 import { CreateArticleResult } from "./create-article.types";
+import { ArticlesListItem } from "./articles.types";
+
+function toArticlesListItem(article: Article): ArticlesListItem {
+  return {
+    id: article.id,
+    sourceId: article.sourceId,
+    title: article.title,
+    description: article.description,
+    url: article.url,
+    publishedAt: article.publishedAt,
+  };
+}
 
 @Injectable()
 export class ArticlesService {
@@ -17,6 +29,20 @@ export class ArticlesService {
       throw new NotFoundException(`Article with id ${id} not found`);
     }
     return article;
+  }
+
+  async findByTopic(
+    topicCode: string,
+    classifierVersion: string,
+    limit: number,
+  ): Promise<ArticlesListItem[]> {
+    const articles = await this.articlesRepository.findByTopic(
+      topicCode,
+      classifierVersion,
+      limit,
+    );
+
+    return articles.map(toArticlesListItem);
   }
 
   async findArticleIdsPendingClassification(

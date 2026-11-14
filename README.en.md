@@ -318,9 +318,11 @@ If articles do not appear, check the ingestion logs and connectivity to PostgreS
 | `POST` | `/sources` | Create an enabled source |
 | `POST` | `/sources/:id/enable` | Enable a source; returns `204` |
 | `POST` | `/sources/:id/disable` | Disable a source; returns `204` |
-| `GET` | `/articles` | List all saved articles |
+| `GET` | `/articles` | List articles by topic and classifier version, with a result limit |
 | `GET` | `/articles/:id` | Retrieve an article |
 | `DELETE` | `/articles/:id` | Delete an article; returns `204` |
+
+`GET /articles` requires `topicCode` and `classifierVersion`; `limit` is an integer from 1 to 100 and defaults to 20. Example: `/articles?topicCode=medtop:20000574&classifierVersion=0.1.0&limit=20`. Results are ordered by publication date and ID descending; the internal `externalId` is omitted. No matches returns `[]`; invalid or unexpected parameters return `400`. Cursor pagination is not implemented yet.
 
 Request body for `POST /sources`:
 
